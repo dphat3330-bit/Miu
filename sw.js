@@ -1,5 +1,5 @@
 const CACHE_NAME = "miu-cache-v1";
-const ASSETS = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
+const ASSETS = ["./", "./index.html", "./manifest.json", "./icon-192(1).png", "./icon-512(2).png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));

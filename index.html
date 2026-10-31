@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Miu — Trợ lý AI</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#1b1625">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Miu">
+<style>
+  :root{
+    --bg: #f7f3f8;
+    --bg-glow: #ece0f0;
+    --bg-soft: #ece4ef;
+    --bubble-miu: #efe6f3;
+    --bubble-user: #ff8fa3;
+    --text: #2a1f33;
+    --text-dim: #7a6f88;
+    --accent: #d6557a;
+    --accent-dim: #c76a84;
+    --danger: #e0657a;
+    --radius: 18px;
+    color-scheme: light;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1b1625; --bg-glow: #2a2140; --bg-soft: #241d33;
+      --bubble-miu: #2c2440; --bubble-user: #ff8fa3;
+      --text: #f4eee7; --text-dim: #b8aec8;
+      --accent: #ff8fa3; --accent-dim: #c76a84;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1b1625; --bg-glow: #2a2140; --bg-soft: #241d33;
+    --bubble-miu: #2c2440; --bubble-user: #ff8fa3;
+    --text: #f4eee7; --text-dim: #b8aec8;
+    --accent: #ff8fa3; --accent-dim: #c76a84;
+    color-scheme: dark;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: radial-gradient(circle at 20% 0%, var(--bg-glow) 0%, var(--bg) 55%);
+    color: var(--text);
+    display:flex; flex-direction:column; height:100%;
+    overflow:hidden;
+  }
+  header{
+    padding:14px 18px; display:flex; align-items:center; gap:10px;
+    border-bottom:1px solid rgba(255,255,255,.07);
+    flex-shrink:0;
+  }
+  .paw{font-size:26px;}
+  header h1{font-size:18px; margin:0; font-weight:600;}
+  header p{margin:0; font-size:12px; color:var(--text-dim);}
+  .header-text{flex:1;}
+  .gear{
+    background:none; border:none; color:var(--text-dim); cursor:pointer;
+    font-size:20px; padding:6px; border-radius:50%;
+  }
+  .gear:hover{color:var(--text); background:rgba(255,255,255,.06);}
+  .live-btn{
+    background:none; border:none; color:var(--text-dim); cursor:pointer;
+    font-size:18px; padding:6px; border-radius:50%;
+  }
+  .live-btn:hover{color:var(--text); background:rgba(255,255,255,.06);}
+  .live-btn.active{color:var(--accent); animation:live-pulse 1.4s ease-in-out infinite;}
+  @keyframes live-pulse{
+    0%,100%{ box-shadow:0 0 0 0 rgba(255,143,163,.45); }
+    50%{ box-shadow:0 0 0 8px rgba(255,143,163,0); }
+  }
+
+  #settings{
+    display:none; padding:14px 18px; background:var(--bg-soft);
+    border-bottom:1px solid rgba(255,255,255,.07); flex-shrink:0;
+  }
+  #settings.open{display:block;}
+  #settings label{font-size:12px; color:var(--text-dim); display:block; margin-bottom:6px;}
+  #settings .row{display:flex; gap:8px;}
+  #settings input{
+    flex:1; padding:9px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.12);
+    background:var(--bg); color:var(--text); font-size:13px;
+  }
+  #settings button{
+    padding:9px 14px; border-radius:10px; border:none; background:var(--accent);
+    color:#1b1625; font-weight:600; cursor:pointer; font-size:13px;
+  }
+  #settings .hint{font-size:11px; color:var(--text-dim); margin-top:8px; line-height:1.5;}
+
+  #chat{
+    flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px;
+  }
+  .bubble{
+    max-width:78%; padding:10px 14px; border-radius:var(--radius); font-size:14.5px;
+    line-height:1.45; white-space:pre-wrap; word-wrap:break-word;
+  }
+  .bubble.miu{
+    align-self:flex-start; background:var(--bubble-miu); color:var(--text);
+    border-bottom-left-radius:4px;
+  }
+  .bubble.user{
+    align-self:flex-end; background:var(--bubble-user); color:#2a1620;
+    border-bottom-right-radius:4px;
+  }
+  .bubble.typing{color:var(--text-dim); font-style:italic;}
+
+  footer{
+    padding:12px 14px; display:flex; gap:8px; border-top:1px solid rgba(255,255,255,.07);
+    flex-shrink:0; background:var(--bg);
+  }
+  #input{
+    flex:1; padding:12px 16px; border-radius:22px; border:1px solid rgba(255,255,255,.12);
+    background:var(--bg-soft); color:var(--text); font-size:14.5px; outline:none;
+  }
+  #input:focus{border-color:var(--accent);}
+  #send{
+    width:44px; height:44px; border-radius:50%; border:none; background:var(--accent);
+    color:#1b1625; font-size:18px; cursor:pointer; flex-shrink:0;
+  }
+  #send:active{transform:scale(0.94);}
+
+  #chat::-webkit-scrollbar{width:6px;}
+  #chat::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12); border-radius:4px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="paw">🐾</div>
+  <div class="header-text">
+    <h1>Miu</h1>
+    <p>Trợ lý AI của bạn</p>
+  </div>
+  <button class="live-btn" id="liveBtn" title="Chế độ live (nói chuyện bằng giọng nói)">🎙️</button>
+  <button class="gear" id="gearBtn" title="Cài đặt">⚙</button>
+</header>
+
+<div id="settings">
+  <label for="apiKeyInput">Gemini API Key (lưu trong trình duyệt này, không gửi đi đâu khác)</label>
+  <div class="row">
+    <input type="password" id="apiKeyInput" placeholder="Dán API key vào đây...">
+    <button id="saveKeyBtn">Lưu</button>
+  </div>
+  <div class="hint">
+    Chưa có key? Lấy miễn phí tại Google AI Studio (aistudio.google.com) → API Keys.
+    Gõ "help" trong khung chat để xem các lệnh offline (không cần API key).
+  </div>
+</div>
+
+<div id="chat"></div>
+
+<footer>
+  <input id="input" type="text" placeholder="Nhắn gì đó cho Miu..." autocomplete="off">
+  <button id="send">➤</button>
+</footer>
+
+<script>
+const chatEl = document.getElementById('chat');
+const inputEl = document.getElementById('input');
+const sendBtn = document.getElementById('send');
+const gearBtn = document.getElementById('gearBtn');
+const liveBtn = document.getElementById('liveBtn');
+const settingsEl = document.getElementById('settings');
+const apiKeyInput = document.getElementById('apiKeyInput');
+const saveKeyBtn = document.getElementById('saveKeyBtn');
+
+const GEMINI_MODEL = "gemini-3.1-flash-lite";
+const SYSTEM_PERSONA =
+  "Ban la Miu, mot tro ly AI ca nhan noi tieng Viet, than thien, am ap, " +
+  "hay dung tu 'minh' de xung ho va goi nguoi dung la 'ban', khong bao gio " +
+  "goi nguoi dung la 'may'. Tra loi ngan gon, tu nhien, gan gui, co the " +
+  "dung vai icon ✨🐾 cho vui nhung dung lam dung. Tra loi bang tieng Viet " +
+  "co dau day du.";
+
+let history = JSON.parse(localStorage.getItem('miu_history') || '[]');
+let liveActive = false;
+let waitingForReply = false;
+let recognition = null;
+let apiKey = localStorage.getItem('miu_api_key') || '';
+apiKeyInput.value = apiKey;
+
+function saveHistory(){
+  localStorage.setItem('miu_history', JSON.stringify(history.slice(-60)));
+}
+
+function addBubble(text, who, store = true){
+  const div = document.createElement('div');
+  div.className = 'bubble ' + who;
+  div.textContent = text;
+  chatEl.appendChild(div);
+  chatEl.scrollTop = chatEl.scrollHeight;
+  if (store){
+    history.push({who, text});
+    saveHistory();
+  }
+  if (who === 'miu' && liveActive){
+    waitingForReply = false;
+    speakText(text);
+  }
+  return div;
+}
+
+// Khoi phuc lich su chat cu (neu co)
+if (history.length){
+  history.forEach(m => addBubble(m.text, m.who, false));
+} else {
+  addBubble("Chào bạn! Mình là Miu 🐾 Gõ \"help\" để xem mình làm được gì nhé.", "miu");
+}
+
+gearBtn.onclick = () => settingsEl.classList.toggle('open');
+saveKeyBtn.onclick = () => {
+  apiKey = apiKeyInput.value.trim();
+  localStorage.setItem('miu_api_key', apiKey);
+  settingsEl.classList.remove('open');
+  addBubble(apiKey ? "Đã lưu API key! Giờ mình trò chuyện tự do được rồi." : "Đã xoá API key.", "miu", false);
+};
+
+// ---------------- Cac lenh offline (khong can API) ----------------
+function generatePassword(length){
+  length = Math.max(6, Math.min(length || 12, 64));
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const upper = lower.toUpperCase();
+  const digits = "0123456789";
+  const symbols = "!@#$%^&*()-_=+";
+  const all = lower + upper + digits + symbols;
+  function pick(set){ return set[crypto.getRandomValues(new Uint32Array(1))[0] % set.length]; }
+  let pass = [pick(lower), pick(upper), pick(digits)];
+  while (pass.length < length) pass.push(pick(all));
+  for (let i = pass.length - 1; i > 0; i--){
+    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+    [pass[i], pass[j]] = [pass[j], pass[i]];
+  }
+  return pass.join('');
+}
+
+let countdownTimer = null;
+function startCountdown(seconds){
+  seconds = Math.max(1, Math.min(seconds || 10, 300));
+  if (countdownTimer) clearInterval(countdownTimer);
+  addBubble(`Đếm ngược ${seconds} giây nhé!`, "miu");
+  let n = seconds;
+  countdownTimer = setInterval(() => {
+    addBubble(String(n), "miu");
+    n--;
+    if (n < 0){
+      clearInterval(countdownTimer);
+      countdownTimer = null;
+      addBubble("Hết giờ rồi! ⏰", "miu");
+    }
+  }, 1000);
+}
+
+const HELP_TEXT =
+`Mình làm được (offline, không cần API key):
+- "tao mat khau [so ky tu]" — tạo mật khẩu ngẫu nhiên
+- "dem nguoc [so giay]" — đếm ngược
+- "game 4" (hoặc "doan con vat") — chơi đoán con vật qua gợi ý
+- "game 5" (hoặc "noi tu") — chơi nối từ
+- "nhac uong nuoc [so phut]" — bật nhắc uống nước định kỳ (mặc định 60 phút)
+- "tat nhac uong nuoc" — tắt nhắc uống nước
+- "help" — xem lại danh sách này
+
+Nếu đã lưu Gemini API key (nút ⚙ góc trên), bạn có thể trò chuyện tự do với mình về bất cứ điều gì!`;
+
+function stripDiacritics(str){
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+}
+
+// ---------------- Game 4: Doan con vat ----------------
+const ANIMALS = [
+  {ten:"cho", goiY:["La ban than lau doi nhat cua con nguoi.","Hay vay duoi khi vui, biet giu nha.","Keu 'gau gau'."]},
+  {ten:"meo", goiY:["Thich nam sap va rinh chuot.","Rat sach se, hay tu liem long.","Keu 'meo meo'."]},
+  {ten:"voi", goiY:["La dong vat tren can lon nhat con song.","Co cai voi dai dung de hut nuoc, boc thuc an.","Doi tai to nhu 2 canh quat."]},
+  {ten:"huou cao co", goiY:["La con vat cao nhat the gioi.","Co cai co rat dai de an la tren cao.","Song chu yeu o thao nguyen chau Phi."]},
+  {ten:"su tu", goiY:["Duoc menh danh la chua te son lam.","Con duc co bom toc quanh co rat oai ve.","Song thanh dan, san moi theo nhom."]},
+  {ten:"ca voi", goiY:["La dong vat lon nhat hanh tinh, song duoi bien.","La dong vat co vu, phai ngoi len mat nuoc de tho.","Mot so loai hat rat hay, gan giong 'ca hat'."]},
+  {ten:"khi", goiY:["Rat thich an chuoi.","Leo treo rat gioi, hay bat chuoc dong tac con nguoi.","La ho hang gan voi loai nguoi trong tu nhien."]},
+  {ten:"ga", goiY:["Gay bao thuc moi buoi sang som.","De trung, la mon an quen thuoc.","Keu 'o o o o o'."]},
+  {ten:"rua", goiY:["Di rat cham nhung song rat tho.","Co the rut dau va chan vao trong mai khi so hai.","Trong truyen ngu ngon, thang cuoc thi voi tho."]},
+  {ten:"ca sau", goiY:["Song ca duoi nuoc lan tren can, ham rang rat sac.","Hay nam bat dong nhu khuc go de rinh moi.","La mot trong nhung loai bo sat lon nhat con song."]},
+];
+let animalGame = { active:false, answer:null, hints:[], hintIndex:0, attempts:0 };
+
+function animalStart(){
+  const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+  animalGame = { active:true, answer:animal.ten, hints:animal.goiY, hintIndex:1, attempts:0 };
+  addBubble(`Mình đang nghĩ đến 1 con vật, đoán xem là con gì nhé!\nGợi ý 1: ${animalGame.hints[0]}\n(Gõ "thoat game 4" để dừng chơi)`, "miu");
+}
+
+function animalGuess(raw){
+  animalGame.attempts++;
+  const guessNorm = stripDiacritics(raw.toLowerCase().trim());
+  const answerNorm = stripDiacritics(animalGame.answer.toLowerCase());
+  if (guessNorm === answerNorm){
+    addBubble(`Chính xác! Đó là con ${animalGame.answer}. Bạn đoán đúng sau ${animalGame.attempts} lần!`, "miu");
+    animalGame = { active:false, answer:null, hints:[], hintIndex:0, attempts:0 };
+    return;
+  }
+  if (animalGame.hintIndex < animalGame.hints.length){
+    const hint = animalGame.hints[animalGame.hintIndex];
+    animalGame.hintIndex++;
+    addBubble(`Chưa đúng rồi. Gợi ý ${animalGame.hintIndex}: ${hint}`, "miu");
+    return;
+  }
+  addBubble(`Hết gợi ý rồi, đáp án là con ${animalGame.answer}.`, "miu");
+  animalGame = { active:false, answer:null, hints:[], hintIndex:0, attempts:0 };
+}
+
+function animalStop(){
+  if (!animalGame.active){ addBubble("Đâu có đang chơi đoán con vật nào cả.", "miu"); return; }
+  const answer = animalGame.answer;
+  animalGame = { active:false, answer:null, hints:[], hintIndex:0, attempts:0 };
+  addBubble(`Đã dừng chơi. Đáp án là con ${answer}.`, "miu");
+}
+
+// ---------------- Game 5: Noi tu ----------------
+const WORDCHAIN_WORDS = [
+  "an", "anh", "ao", "ba", "banh", "bo", "buom", "ca", "canh", "cam",
+  "cao", "cho", "com", "da", "dau", "de", "dua", "em", "en", "ga",
+  "gao", "gau", "gio", "ho", "hoa", "hoc", "im", "it", "keo", "khe",
+  "khoa", "la", "lop", "lua", "meo", "mit", "mua", "nai", "nam", "nang",
+  "nem", "no", "oc", "oi", "ong", "phao", "pho", "phu", "quat", "qua",
+  "quen", "ran", "rau", "re", "sao", "sen", "sung", "suoi", "tam", "tao",
+  "tho", "tom", "tra", "tre", "tu", "uot", "uyen", "vang", "vit", "vo",
+  "xanh", "xe", "xoi", "y", "yeu",
+];
+let wordChainGame = { active:false, used:new Set(), lastLetter:null };
+
+function wcFindContinuation(letter){
+  const candidates = WORDCHAIN_WORDS.filter(w => {
+    const n = stripDiacritics(w).toLowerCase();
+    return n[0] === letter && !wordChainGame.used.has(n);
+  });
+  if (!candidates.length) return null;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+function wordchainStart(){
+  const first = WORDCHAIN_WORDS[Math.floor(Math.random() * WORDCHAIN_WORDS.length)];
+  const norm = stripDiacritics(first).toLowerCase();
+  wordChainGame = { active:true, used:new Set([norm]), lastLetter: norm.slice(-1) };
+  addBubble(`Chơi nối từ nhé! Mình đi trước: "${first}".\nBạn nói 1 từ (không dấu cách) bắt đầu bằng chữ "${wordChainGame.lastLetter}" đi! (Gõ "thoat game 5" để dừng chơi)`, "miu");
+}
+
+function wordchainGuess(raw){
+  const word = raw.trim();
+  if (!word || word.includes(' ')){
+    addBubble(`Bạn gõ 1 từ duy nhất thôi nhé (không có dấu cách), bắt đầu bằng chữ "${wordChainGame.lastLetter}".`, "miu");
+    return;
+  }
+  const norm = stripDiacritics(word.toLowerCase());
+  if (norm[0] !== wordChainGame.lastLetter){
+    wordChainGame.active = false;
+    addBubble(`Từ phải bắt đầu bằng chữ "${wordChainGame.lastLetter}" chứ! Bạn thua rồi, gõ "game 5" để chơi lại nhé.`, "miu");
+    return;
+  }
+  if (wordChainGame.used.has(norm)){
+    wordChainGame.active = false;
+    addBubble(`Từ "${word}" dùng rồi nè, bạn thua rồi! Gõ "game 5" để chơi lại.`, "miu");
+    return;
+  }
+  wordChainGame.used.add(norm);
+  const nextLetter = norm.slice(-1);
+  const continuation = wcFindContinuation(nextLetter);
+  if (!continuation){
+    wordChainGame.active = false;
+    addBubble(`Mình chịu thua, không nghĩ ra từ nào bắt đầu bằng chữ "${nextLetter}" nữa! Bạn thắng!`, "miu");
+    return;
+  }
+  wordChainGame.used.add(stripDiacritics(continuation).toLowerCase());
+  wordChainGame.lastLetter = stripDiacritics(continuation).toLowerCase().slice(-1);
+  addBubble(`"${continuation}". Tới lượt bạn, từ bắt đầu bằng chữ "${wordChainGame.lastLetter}" nhé!`, "miu");
+}
+
+function wordchainStop(){
+  if (!wordChainGame.active){ addBubble("Đâu có đang chơi nối từ đâu.", "miu"); return; }
+  wordChainGame.active = false;
+  addBubble("Đã dừng chơi nối từ.", "miu");
+}
+
+let waterTimer = null;
+function startWaterReminder(text){
+  const match = text.match(/\d+/);
+  let minutes = match ? parseInt(match[0], 10) : 60;
+  minutes = Math.max(1, Math.min(minutes, 180));
+  if (waterTimer) clearInterval(waterTimer);
+  addBubble(`Đã bật nhắc uống nước mỗi ${minutes} phút! Gõ "tat nhac uong nuoc" để tắt.`, "miu");
+  waterTimer = setInterval(() => {
+    addBubble("Uống nước đi bạn ơi! 💧 Giữ sức khỏe nhé.", "miu");
+  }, minutes * 60 * 1000);
+}
+function stopWaterReminder(){
+  if (!waterTimer){ addBubble("Hiện tại chưa bật nhắc uống nước mà.", "miu"); return; }
+  clearInterval(waterTimer);
+  waterTimer = null;
+  addBubble("Đã tắt nhắc uống nước.", "miu");
+}
+
+function handleLocalCommand(raw){
+  const text = stripDiacritics(raw.toLowerCase()).trim();
+  if (text === 'help' || text === 'tro giup'){
+    addBubble(HELP_TEXT, "miu");
+    return true;
+  }
+  if (text.includes('tao mat khau') || text.includes('sinh mat khau')){
+    const match = text.match(/\d+/);
+    const len = match ? parseInt(match[0], 10) : 12;
+    addBubble(`Mật khẩu ${len} ký tự của bạn:\n${generatePassword(len)}`, "miu");
+    return true;
+  }
+  if (text.includes('dem nguoc')){
+    const match = text.match(/\d+/);
+    const sec = match ? parseInt(match[0], 10) : 10;
+    startCountdown(sec);
+    return true;
+  }
+  if (text.includes('tat nhac uong nuoc') || text.includes('dung nhac uong nuoc') || text.includes('thoat nhac uong nuoc')){
+    stopWaterReminder();
+    return true;
+  }
+  if (text.includes('nhac uong nuoc') || text.includes('bat nhac uong nuoc')){
+    startWaterReminder(text);
+    return true;
+  }
+  if (text.includes('thoat game 4') || text.includes('dung game 4') || text.includes('huy game 4')){
+    animalStop();
+    return true;
+  }
+  if (text.includes('game 4') || text.includes('doan con vat')){
+    animalStart();
+    return true;
+  }
+  if (text.includes('thoat game 5') || text.includes('dung game 5') || text.includes('huy game 5')){
+    wordchainStop();
+    return true;
+  }
+  if (text.includes('game 5') || text.includes('noi tu')){
+    wordchainStart();
+    return true;
+  }
+  return false;
+}
+
+// ---------------- Goi Gemini cho cac cau hoi tu do ----------------
+async function askMiu(userText){
+  const thinking = addBubble("Miu đang gõ...", "miu typing", false);
+  if (!apiKey){
+    thinking.remove();
+    addBubble("Bạn chưa lưu Gemini API key (bấm ⚙ góc trên để thêm) nên mình chỉ làm được các lệnh offline thôi. Gõ \"help\" xem danh sách nhé.", "miu");
+    return;
+  }
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const contents = history
+      .filter(m => m.who === 'user' || m.who === 'miu')
+      .slice(-12)
+      .map(m => ({ role: m.who === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
+    contents.push({ role: 'user', parts: [{ text: userText }] });
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents,
+        systemInstruction: { parts: [{ text: SYSTEM_PERSONA }] },
+      }),
+    });
+    const data = await res.json();
+    thinking.remove();
+    if (!res.ok){
+      addBubble(`Lỗi gọi Gemini (${res.status}): ${data?.error?.message || 'không rõ nguyên nhân'}`, "miu");
+      return;
+    }
+    const reply = data?.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || "Mình chưa nghĩ ra câu trả lời, bạn hỏi lại giúp mình nhé.";
+    addBubble(reply, "miu");
+  } catch (err){
+    thinking.remove();
+    addBubble("Không kết nối được tới Gemini. Kiểm tra lại mạng hoặc API key nhé.", "miu");
+  }
+}
+
+const RecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (RecognitionCtor){
+  recognition = new RecognitionCtor();
+  recognition.lang = 'vi-VN';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.onresult = (e) => {
+    const transcript = e.results[0][0].transcript.trim();
+    if (transcript){
+      waitingForReply = true;
+      inputEl.value = transcript;
+      send();
+    }
+  };
+  recognition.onend = () => {
+    if (liveActive && !waitingForReply && !speechSynthesis.speaking) startListening();
+  };
+  recognition.onerror = (e) => {
+    if (e.error === 'not-allowed'){
+      liveActive = false;
+      liveBtn.classList.remove('active');
+      addBubble("Mình chưa được cấp quyền dùng micro, bạn cho phép rồi bật lại Live nhé.", "miu", false);
+      return;
+    }
+    if (liveActive && !waitingForReply) setTimeout(() => startListening(), 500);
+  };
+}
+
+function startListening(){
+  if (!recognition || !liveActive || waitingForReply) return;
+  try { recognition.start(); } catch (e) { /* da dang chay, bo qua */ }
+}
+
+function speakText(text){
+  if (!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'vi-VN';
+  utter.onend = () => { if (liveActive) startListening(); };
+  speechSynthesis.speak(utter);
+}
+
+liveBtn.onclick = () => {
+  if (!recognition){
+    addBubble("Trình duyệt này chưa hỗ trợ live voice, bạn thử trên Chrome hoặc Edge nhé.", "miu", false);
+    return;
+  }
+  liveActive = !liveActive;
+  liveBtn.classList.toggle('active', liveActive);
+  if (liveActive){
+    addBubble("Đã bật chế độ live, bạn nói chuyện thoải mái nhé! 🎙️", "miu", false);
+    startListening();
+  } else {
+    speechSynthesis.cancel();
+    if (recognition) { try { recognition.stop(); } catch(e){} }
+    addBubble("Đã tắt chế độ live.", "miu", false);
+  }
+};
+
+function send(){
+  const text = inputEl.value.trim();
+  if (!text) return;
+  addBubble(text, "user");
+  inputEl.value = '';
+
+  if (handleLocalCommand(text)) return;
+
+  askMiu(text);
+}
+
+sendBtn.onclick = send;
+inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+
+// Dang ky service worker de co the "Cai dat" thanh app va dung offline duoc 1 phan
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+  </html>

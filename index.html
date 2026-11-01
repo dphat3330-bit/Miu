@@ -96,6 +96,11 @@
     color:#1b1625; font-weight:600; cursor:pointer; font-size:13px;
   }
   #settings .hint{font-size:11px; color:var(--text-dim); margin-top:8px; line-height:1.5;}
+  #settings select{
+    flex:1; padding:9px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.12);
+    background:var(--bg); color:var(--text); font-size:13px;
+  }
+  #settings .row + label{margin-top:12px;}
 
   #chat{
     flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px;
@@ -146,13 +151,25 @@
 </header>
 
 <div id="settings">
+  <label for="providerSelect">Chọn AI để Miu trò chuyện</label>
+  <div class="row">
+    <select id="providerSelect">
+      <option value="gemini">Gemini (Google)</option>
+      <option value="deepseek">DeepSeek</option>
+    </select>
+  </div>
   <label for="apiKeyInput">Gemini API Key (lưu trong trình duyệt này, không gửi đi đâu khác)</label>
   <div class="row">
-    <input type="password" id="apiKeyInput" placeholder="Dán API key vào đây...">
+    <input type="password" id="apiKeyInput" placeholder="Dán Gemini API key vào đây...">
     <button id="saveKeyBtn">Lưu</button>
   </div>
+  <label for="deepseekKeyInput">DeepSeek API Key (lưu trong trình duyệt này, không gửi đi đâu khác)</label>
+  <div class="row">
+    <input type="password" id="deepseekKeyInput" placeholder="Dán DeepSeek API key vào đây...">
+    <button id="saveDeepseekBtn">Lưu</button>
+  </div>
   <div class="hint">
-    Chưa có key? Lấy miễn phí tại Google AI Studio (aistudio.google.com) → API Keys.
+    Gemini: lấy key tại aistudio.google.com → API Keys. DeepSeek: lấy key tại platform.deepseek.com → API keys (thường cần nạp một ít số dư để dùng).
     Gõ "help" trong khung chat để xem các lệnh offline (không cần API key).
   </div>
 </div>
@@ -173,8 +190,12 @@ const liveBtn = document.getElementById('liveBtn');
 const settingsEl = document.getElementById('settings');
 const apiKeyInput = document.getElementById('apiKeyInput');
 const saveKeyBtn = document.getElementById('saveKeyBtn');
+const providerSelect = document.getElementById('providerSelect');
+const deepseekKeyInput = document.getElementById('deepseekKeyInput');
+const saveDeepseekBtn = document.getElementById('saveDeepseekBtn');
 
 const GEMINI_MODEL = "gemini-3.1-flash-lite";
+const DEEPSEEK_MODEL = "deepseek-v4-flash";
 const SYSTEM_PERSONA =
   "Ban la Miu, mot tro ly AI ca nhan noi tieng Viet, than thien, am ap, " +
   "hay dung tu 'minh' de xung ho va goi nguoi dung la 'ban', khong bao gio " +
@@ -188,6 +209,10 @@ let waitingForReply = false;
 let recognition = null;
 let apiKey = localStorage.getItem('miu_api_key') || '';
 apiKeyInput.value = apiKey;
+let provider = localStorage.getItem('miu_provider') || 'gemini';
+let deepseekKey = localStorage.getItem('miu_deepseek_key') || '';
+providerSelect.value = provider;
+deepseekKeyInput.value = deepseekKey;
 
 function saveHistory(){
   localStorage.setItem('miu_history', JSON.stringify(history.slice(-60)));
@@ -225,6 +250,18 @@ saveKeyBtn.onclick = () => {
   addBubble(apiKey ? "Đã lưu API key! Giờ mình trò chuyện tự do được rồi." : "Đã xoá API key.", "miu", false);
 };
 
+providerSelect.onchange = () => {
+  provider = providerSelect.value;
+  localStorage.setItem('miu_provider', provider);
+  addBubble(provider === 'deepseek' ? "Đã chuyển sang DeepSeek!" : "Đã chuyển sang Gemini!", "miu", false);
+};
+saveDeepseekBtn.onclick = () => {
+  deepseekKey = deepseekKeyInput.value.trim();
+  localStorage.setItem('miu_deepseek_key', deepseekKey);
+  settingsEl.classList.remove('open');
+  addBubble(deepseekKey ? "Đã lưu DeepSeek API key! Nhớ chọn DeepSeek ở mục \"Chọn AI\" nếu muốn dùng nhé." : "Đã xoá DeepSeek API key.", "miu", false);
+};
+
 // ---------------- Cac lenh offline (khong can API) ----------------
 function generatePassword(length){
   length = Math.max(6, Math.min(length || 12, 64));
@@ -236,6 +273,7 @@ function generatePassword(length){
   function pick(set){ return set[crypto.getRandomValues(new Uint32Array(1))[0] % set.length]; }
   let pass = [pick(lower), pick(upper), pick(digits)];
   while (pass.length < length) pass.push(pick(all));
+  // xao thu tu cho ngau nhien
   for (let i = pass.length - 1; i > 0; i--){
     const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
     [pass[i], pass[j]] = [pass[j], pass[i]];
@@ -270,7 +308,7 @@ const HELP_TEXT =
 - "tat nhac uong nuoc" — tắt nhắc uống nước
 - "help" — xem lại danh sách này
 
-Nếu đã lưu Gemini API key (nút ⚙ góc trên), bạn có thể trò chuyện tự do với mình về bất cứ điều gì!`;
+Nếu đã lưu API key (Gemini hoặc DeepSeek, nút ⚙ góc trên), bạn có thể trò chuyện tự do với mình về bất cứ điều gì!`;
 
 function stripDiacritics(str){
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
@@ -432,6 +470,8 @@ function handleLocalCommand(raw){
     startWaterReminder(text);
     return true;
   }
+  // Kiem tra lenh THOAT truoc lenh BAT de "thoat game 4" khong bi hieu
+  // nham thanh lenh bat game 4 (vi no cung chua chuoi con "game 4").
   if (text.includes('thoat game 4') || text.includes('dung game 4') || text.includes('huy game 4')){
     animalStop();
     return true;
@@ -451,8 +491,57 @@ function handleLocalCommand(raw){
   return false;
 }
 
-// ---------------- Goi Gemini cho cac cau hoi tu do ----------------
+// ---------------- Goi AI cho cac cau hoi tu do ----------------
 async function askMiu(userText){
+  if (provider === 'deepseek') return askDeepseek(userText);
+  return askGemini(userText);
+}
+
+async function askDeepseek(userText){
+  const thinking = addBubble("Miu đang gõ...", "miu typing", false);
+  if (!deepseekKey){
+    thinking.remove();
+    addBubble("Bạn chưa lưu DeepSeek API key (bấm ⚙ góc trên để thêm) nên mình chỉ làm được các lệnh offline thôi. Gõ \"help\" xem danh sách nhé.", "miu");
+    return;
+  }
+  try {
+    const messages = [{ role: 'system', content: SYSTEM_PERSONA }].concat(
+      history
+        .filter(m => m.who === 'user' || m.who === 'miu')
+        .slice(-12)
+        .map(m => ({ role: m.who === 'user' ? 'user' : 'assistant', content: m.text }))
+    );
+    if (messages[messages.length - 1].role !== 'user'){
+      messages.push({ role: 'user', content: userText });
+    }
+    const res = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + deepseekKey,
+      },
+      body: JSON.stringify({
+        model: DEEPSEEK_MODEL,
+        messages,
+        thinking: { type: 'disabled' },
+        stream: false,
+      }),
+    });
+    const data = await res.json();
+    thinking.remove();
+    if (!res.ok){
+      addBubble(`Lỗi gọi DeepSeek (${res.status}): ${data?.error?.message || 'không rõ nguyên nhân'}`, "miu");
+      return;
+    }
+    const reply = data?.choices?.[0]?.message?.content || "Mình chưa nghĩ ra câu trả lời, bạn hỏi lại giúp mình nhé.";
+    addBubble(reply, "miu");
+  } catch (err){
+    thinking.remove();
+    addBubble("Không kết nối được tới DeepSeek. Kiểm tra lại mạng hoặc API key nhé (hoặc trình duyệt đang chặn kết nối tới DeepSeek).", "miu");
+  }
+}
+
+async function askGemini(userText){
   const thinking = addBubble("Miu đang gõ...", "miu typing", false);
   if (!apiKey){
     thinking.remove();
@@ -570,4 +659,4 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 </body>
-  </html>
+</html>

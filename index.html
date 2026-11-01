@@ -102,6 +102,33 @@
   }
   #settings .row + label{margin-top:12px;}
 
+  .deep-btn{
+    background:none; border:none; color:var(--text-dim); cursor:pointer;
+    font-size:18px; padding:6px; border-radius:50%;
+  }
+  .deep-btn:hover{color:var(--text); background:rgba(255,255,255,.06);}
+  .deep-btn.active{color:var(--accent); background:rgba(255,143,163,.22);}
+
+  #attachBar{
+    display:none; gap:8px; flex-wrap:wrap; padding:8px 14px 0; flex-shrink:0; background:var(--bg);
+  }
+  #attachBar.has{display:flex;}
+  .chip{
+    display:flex; align-items:center; gap:6px; max-width:100%; padding:4px 8px;
+    border-radius:12px; background:var(--bg-soft); color:var(--text); font-size:12px;
+  }
+  .chip img{width:32px; height:32px; object-fit:cover; border-radius:6px;}
+  .chip span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:140px;}
+  .chip button{background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:14px; padding:0 2px;}
+  .bubble img.thumb{display:block; max-width:100%; max-height:180px; border-radius:10px; margin-top:6px;}
+  .bubble .sources{margin-top:8px; font-size:12px; color:var(--text-dim); line-height:1.7;}
+  .bubble .sources a{color:var(--accent);}
+  .bar-btn{
+    background:none; border:none; color:var(--text-dim); cursor:pointer;
+    font-size:20px; width:38px; height:44px; border-radius:50%; flex-shrink:0; padding:0;
+  }
+  .bar-btn:hover{color:var(--text); background:rgba(255,255,255,.06);}
+
   #chat{
     flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px;
   }
@@ -124,7 +151,7 @@
     flex-shrink:0; background:var(--bg);
   }
   #input{
-    flex:1; padding:12px 16px; border-radius:22px; border:1px solid rgba(255,255,255,.12);
+    flex:1; min-width:0; padding:12px 16px; border-radius:22px; border:1px solid rgba(255,255,255,.12);
     background:var(--bg-soft); color:var(--text); font-size:14.5px; outline:none;
   }
   #input:focus{border-color:var(--accent);}
@@ -146,6 +173,7 @@
     <h1>Miu</h1>
     <p>Trợ lý AI của bạn</p>
   </div>
+  <button class="deep-btn" id="deepBtn" title="Suy nghĩ sâu (trả lời lâu hơn nhưng kỹ hơn, có tìm thêm nguồn)">🧠</button>
   <button class="live-btn" id="liveBtn" title="Chế độ live (nói chuyện bằng giọng nói)">🎙️</button>
   <button class="gear" id="gearBtn" title="Cài đặt">⚙</button>
 </header>
@@ -176,10 +204,17 @@
 
 <div id="chat"></div>
 
+<div id="attachBar"></div>
+
 <footer>
+  <button class="bar-btn" id="attachBtn" title="Đính kèm tệp hoặc ảnh">📎</button>
+  <button class="bar-btn" id="camBtn" title="Chụp ảnh">📷</button>
   <input id="input" type="text" placeholder="Nhắn gì đó cho Miu..." autocomplete="off">
   <button id="send">➤</button>
 </footer>
+<input type="file" id="fileInput" multiple hidden
+  accept="image/*,application/pdf,text/*,.txt,.md,.csv,.json,.js,.py,.html,.css,.xml,.log,.yml,.yaml">
+<input type="file" id="camInput" accept="image/*" capture="environment" hidden>
 
 <script>
 const chatEl = document.getElementById('chat');
@@ -193,9 +228,19 @@ const saveKeyBtn = document.getElementById('saveKeyBtn');
 const providerSelect = document.getElementById('providerSelect');
 const deepseekKeyInput = document.getElementById('deepseekKeyInput');
 const saveDeepseekBtn = document.getElementById('saveDeepseekBtn');
+const deepBtn = document.getElementById('deepBtn');
+const attachBtn = document.getElementById('attachBtn');
+const camBtn = document.getElementById('camBtn');
+const fileInput = document.getElementById('fileInput');
+const camInput = document.getElementById('camInput');
+const attachBar = document.getElementById('attachBar');
 
 const GEMINI_MODEL = "gemini-3.1-flash-lite";
 const DEEPSEEK_MODEL = "deepseek-v4-flash";
+const DEEP_HINT =
+  " CHE DO SUY NGHI SAU: hay suy nghi ky truoc khi tra loi, tra loi day du, mach lac, " +
+  "co cau truc (co the dai hon binh thuong), uu tien thong tin chinh xac va moi nhat, " +
+  "neu khong chac thi noi ro la khong chac.";
 const SYSTEM_PERSONA =
   "Ban la Miu, mot tro ly AI ca nhan noi tieng Viet, than thien, am ap, " +
   "hay dung tu 'minh' de xung ho va goi nguoi dung la 'ban', khong bao gio " +
@@ -209,6 +254,9 @@ let waitingForReply = false;
 let recognition = null;
 let apiKey = localStorage.getItem('miu_api_key') || '';
 apiKeyInput.value = apiKey;
+let deepMode = localStorage.getItem('miu_deep') === '1';
+deepBtn.classList.toggle('active', deepMode);
+let attachments = [];
 let provider = localStorage.getItem('miu_provider') || 'gemini';
 let deepseekKey = localStorage.getItem('miu_deepseek_key') || '';
 providerSelect.value = provider;
@@ -306,6 +354,8 @@ const HELP_TEXT =
 - "game 5" (hoặc "noi tu") — chơi nối từ
 - "nhac uong nuoc [so phut]" — bật nhắc uống nước định kỳ (mặc định 60 phút)
 - "tat nhac uong nuoc" — tắt nhắc uống nước
+- Nút 🧠 — bật/tắt suy nghĩ sâu (trả lời lâu hơn nhưng kỹ hơn, Gemini còn tìm thêm nguồn)
+- Nút 📎 / 📷 — đính kèm tệp, ảnh hoặc chụp ảnh để hỏi Miu (Gemini đọc được ảnh và PDF)
 - "help" — xem lại danh sách này
 
 Nếu đã lưu API key (Gemini hoặc DeepSeek, nút ⚙ góc trên), bạn có thể trò chuyện tự do với mình về bất cứ điều gì!`;
@@ -491,29 +541,155 @@ function handleLocalCommand(raw){
   return false;
 }
 
-// ---------------- Goi AI cho cac cau hoi tu do ----------------
-async function askMiu(userText){
-  if (provider === 'deepseek') return askDeepseek(userText);
-  return askGemini(userText);
+// ---------------- Dinh kem tep / anh / chup anh ----------------
+const MAX_ATTACH = 4;
+const TEXT_EXTS = ['txt','md','csv','json','js','ts','py','html','css','xml','log','yml','yaml','java','c','cpp','h','sh','sql','ini','tsv'];
+
+function readAsBase64(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1]);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
+function readAsText(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(r.error);
+    r.readAsText(file);
+  });
+}
+// Thu nho anh (toi da 1280px) de gui nhanh va nhe
+function loadImage(file){
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 1280 / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      URL.revokeObjectURL(url);
+      resolve({ mime: 'image/jpeg', data: dataUrl.split(',')[1], thumb: dataUrl });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('img')); };
+    img.src = url;
+  });
 }
 
-async function askDeepseek(userText){
-  const thinking = addBubble("Miu đang gõ...", "miu typing", false);
+function renderAttachments(){
+  attachBar.textContent = '';
+  attachBar.classList.toggle('has', attachments.length > 0);
+  attachments.forEach((a, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    if (a.thumb){
+      const im = document.createElement('img');
+      im.src = a.thumb;
+      chip.appendChild(im);
+    } else {
+      const ic = document.createElement('div');
+      ic.textContent = a.kind === 'pdf' ? '📕' : '📄';
+      chip.appendChild(ic);
+    }
+    const nm = document.createElement('span');
+    nm.textContent = a.name;
+    chip.appendChild(nm);
+    const x = document.createElement('button');
+    x.textContent = '✕';
+    x.onclick = () => { attachments.splice(i, 1); renderAttachments(); };
+    chip.appendChild(x);
+    attachBar.appendChild(chip);
+  });
+}
+
+async function addFiles(fileList){
+  for (const file of Array.from(fileList)){
+    if (attachments.length >= MAX_ATTACH){
+      addBubble(`Mỗi lần mình chỉ nhận tối đa ${MAX_ATTACH} tệp thôi nhé.`, "miu", false);
+      break;
+    }
+    const name = file.name || 'tep';
+    const ext = (name.split('.').pop() || '').toLowerCase();
+    try {
+      if (file.type.startsWith('image/')){
+        const img = await loadImage(file);
+        attachments.push({ name, kind:'image', mime:img.mime, data:img.data, thumb:img.thumb });
+      } else if (file.type === 'application/pdf' || ext === 'pdf'){
+        if (file.size > 10 * 1024 * 1024){
+          addBubble(`Tệp PDF "${name}" lớn quá (trên 10MB), bạn chọn tệp nhỏ hơn nhé.`, "miu", false);
+          continue;
+        }
+        attachments.push({ name, kind:'pdf', mime:'application/pdf', data: await readAsBase64(file) });
+      } else if (file.type.startsWith('text/') || TEXT_EXTS.includes(ext)){
+        let t = await readAsText(file);
+        if (t.length > 60000) t = t.slice(0, 60000) + '\n...(đã cắt bớt vì quá dài)';
+        attachments.push({ name, kind:'text', text:t });
+      } else {
+        addBubble(`Mình chưa đọc được loại tệp "${name}". Hiện đọc được ảnh, PDF và tệp văn bản (txt, md, csv, json, code...).`, "miu", false);
+      }
+    } catch (e){
+      addBubble(`Không đọc được tệp "${name}", bạn thử lại nhé.`, "miu", false);
+    }
+  }
+  renderAttachments();
+}
+
+attachBtn.onclick = () => fileInput.click();
+camBtn.onclick = () => camInput.click();
+fileInput.onchange = async (e) => { await addFiles(e.target.files); e.target.value = ''; };
+camInput.onchange = async (e) => { await addFiles(e.target.files); e.target.value = ''; };
+
+deepBtn.onclick = () => {
+  deepMode = !deepMode;
+  localStorage.setItem('miu_deep', deepMode ? '1' : '0');
+  deepBtn.classList.toggle('active', deepMode);
+  addBubble(deepMode
+    ? "Đã bật suy nghĩ sâu 🧠: mình sẽ trả lời lâu hơn nhưng kỹ hơn (Gemini còn tìm thêm nguồn trên mạng)."
+    : "Đã tắt suy nghĩ sâu.", "miu", false);
+};
+
+// ---------------- Goi AI cho cac cau hoi tu do ----------------
+// Lich su gui cho AI: bo tin nhan nguoi dung vua gui (se them rieng kem tep dinh kem)
+function historyForModel(){
+  const h = history.filter(m => m.who === 'user' || m.who === 'miu').slice(-13);
+  if (h.length && h[h.length - 1].who === 'user') h.pop();
+  return h.slice(-12);
+}
+function attachedTextBlock(atts){
+  return atts.filter(a => a.kind === 'text')
+    .map(a => `\n\n[Nội dung tệp ${a.name}]\n${a.text}`).join('');
+}
+function thinkingText(){
+  return deepMode ? "Miu đang suy nghĩ sâu... (có thể mất khá lâu)" : "Miu đang gõ...";
+}
+
+async function askMiu(userText, atts = []){
+  if (provider === 'deepseek') return askDeepseek(userText, atts);
+  return askGemini(userText, atts);
+}
+
+async function askDeepseek(userText, atts = []){
+  const thinking = addBubble(thinkingText(), "miu typing", false);
   if (!deepseekKey){
     thinking.remove();
     addBubble("Bạn chưa lưu DeepSeek API key (bấm ⚙ góc trên để thêm) nên mình chỉ làm được các lệnh offline thôi. Gõ \"help\" xem danh sách nhé.", "miu");
     return;
   }
+  if (atts.some(a => a.kind !== 'text')){
+    thinking.remove();
+    addBubble("DeepSeek chưa đọc được ảnh hoặc PDF. Bạn bấm ⚙ chọn Gemini để mình xem ảnh/PDF nhé.", "miu");
+    return;
+  }
   try {
-    const messages = [{ role: 'system', content: SYSTEM_PERSONA }].concat(
-      history
-        .filter(m => m.who === 'user' || m.who === 'miu')
-        .slice(-12)
-        .map(m => ({ role: m.who === 'user' ? 'user' : 'assistant', content: m.text }))
-    );
-    if (messages[messages.length - 1].role !== 'user'){
-      messages.push({ role: 'user', content: userText });
-    }
+    const sys = SYSTEM_PERSONA + (deepMode ? DEEP_HINT : '');
+    const messages = [{ role: 'system', content: sys }]
+      .concat(historyForModel().map(m => ({ role: m.who === 'user' ? 'user' : 'assistant', content: m.text })))
+      .concat([{ role: 'user', content: userText + attachedTextBlock(atts) }]);
     const res = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
@@ -523,7 +699,7 @@ async function askDeepseek(userText){
       body: JSON.stringify({
         model: DEEPSEEK_MODEL,
         messages,
-        thinking: { type: 'disabled' },
+        thinking: { type: deepMode ? 'enabled' : 'disabled' },
         stream: false,
       }),
     });
@@ -541,37 +717,82 @@ async function askDeepseek(userText){
   }
 }
 
-async function askGemini(userText){
-  const thinking = addBubble("Miu đang gõ...", "miu typing", false);
+// Goi Gemini, tu thu lai neu may chu qua tai (503) hoac bi gioi han tam thoi (429)
+async function geminiFetch(body){
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  let res, data;
+  for (let attempt = 0; attempt < 3; attempt++){
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    data = await res.json().catch(() => ({}));
+    if (res.status !== 503 && res.status !== 429) break;
+    await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+  }
+  return { res, data };
+}
+
+async function askGemini(userText, atts = []){
+  const thinking = addBubble(thinkingText(), "miu typing", false);
   if (!apiKey){
     thinking.remove();
     addBubble("Bạn chưa lưu Gemini API key (bấm ⚙ góc trên để thêm) nên mình chỉ làm được các lệnh offline thôi. Gõ \"help\" xem danh sách nhé.", "miu");
     return;
   }
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
-    const contents = history
-      .filter(m => m.who === 'user' || m.who === 'miu')
-      .slice(-12)
-      .map(m => ({ role: m.who === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
-    contents.push({ role: 'user', parts: [{ text: userText }] });
-
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents,
-        systemInstruction: { parts: [{ text: SYSTEM_PERSONA }] },
-      }),
+    const parts = [{ text: userText + attachedTextBlock(atts) }];
+    atts.forEach(a => {
+      if (a.kind === 'image' || a.kind === 'pdf') parts.push({ inlineData: { mimeType: a.mime, data: a.data } });
     });
-    const data = await res.json();
+    const contents = historyForModel().map(m => ({ role: m.who === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
+    contents.push({ role: 'user', parts });
+    const baseBody = {
+      contents,
+      systemInstruction: { parts: [{ text: SYSTEM_PERSONA + (deepMode ? DEEP_HINT : '') }] },
+    };
+    // Che do suy nghi sau: thu bat suy nghi + tim kiem; neu model khong ho tro thi ha dan
+    const variants = deepMode ? [
+      { search: true,  think: { thinkingLevel: 'high' } },
+      { search: true,  think: { thinkingBudget: 8192 } },
+      { search: true,  think: null },
+      { search: false, think: null },
+    ] : [{ search: false, think: null }];
+    let result = null;
+    for (const v of variants){
+      const body = Object.assign({}, baseBody);
+      if (v.search) body.tools = [{ google_search: {} }];
+      if (v.think) body.generationConfig = { thinkingConfig: v.think };
+      result = await geminiFetch(body);
+      if (result.res.status !== 400) break;
+    }
     thinking.remove();
+    const { res, data } = result;
     if (!res.ok){
       addBubble(`Lỗi gọi Gemini (${res.status}): ${data?.error?.message || 'không rõ nguyên nhân'}`, "miu");
       return;
     }
-    const reply = data?.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || "Mình chưa nghĩ ra câu trả lời, bạn hỏi lại giúp mình nhé.";
-    addBubble(reply, "miu");
+    const cand = data?.candidates?.[0];
+    const reply = (cand?.content?.parts || []).filter(p => !p.thought).map(p => p.text || '').join('')
+      || "Mình chưa nghĩ ra câu trả lời, bạn hỏi lại giúp mình nhé.";
+    const bubble = addBubble(reply, "miu");
+    const seen = new Set();
+    const sources = (cand?.groundingMetadata?.groundingChunks || [])
+      .map(c => c.web).filter(w => w && w.uri && !seen.has(w.uri) && seen.add(w.uri)).slice(0, 5);
+    if (sources.length){
+      const box = document.createElement('div');
+      box.className = 'sources';
+      box.appendChild(document.createTextNode('Nguồn: '));
+      sources.forEach((w, i) => {
+        if (i) box.appendChild(document.createTextNode(' · '));
+        const a = document.createElement('a');
+        a.href = w.uri; a.target = '_blank'; a.rel = 'noopener';
+        a.textContent = w.title || w.uri;
+        box.appendChild(a);
+      });
+      bubble.appendChild(box);
+    }
   } catch (err){
     thinking.remove();
     addBubble("Không kết nối được tới Gemini. Kiểm tra lại mạng hoặc API key nhé.", "miu");
@@ -639,7 +860,26 @@ liveBtn.onclick = () => {
 
 function send(){
   const text = inputEl.value.trim();
-  if (!text) return;
+  const atts = attachments.slice();
+  if (!text && !atts.length) return;
+
+  if (atts.length){
+    // Co tep dinh kem: gui thang cho AI (bo qua lenh offline)
+    const shown = (text ? text + '\n' : '') + atts.map(a => '📎 ' + a.name).join('\n');
+    const bubble = addBubble(shown, "user");
+    atts.filter(a => a.thumb).forEach(a => {
+      const im = document.createElement('img');
+      im.className = 'thumb';
+      im.src = a.thumb;
+      bubble.appendChild(im);
+    });
+    inputEl.value = '';
+    attachments = [];
+    renderAttachments();
+    askMiu(text || 'Hãy xem tệp đính kèm này và cho mình biết nội dung chính, giải thích giúp mình nhé.', atts);
+    return;
+  }
+
   addBubble(text, "user");
   inputEl.value = '';
 
@@ -647,6 +887,7 @@ function send(){
 
   askMiu(text);
 }
+
 
 sendBtn.onclick = send;
 inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });

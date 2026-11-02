@@ -2,6 +2,8 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: blob: https://*.googleusercontent.com; connect-src 'self' https://generativelanguage.googleapis.com https://api.deepseek.com https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; object-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'; worker-src 'self'">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Miu — Trợ lý AI</title>
 <link rel="manifest" href="manifest.json">
@@ -102,6 +104,12 @@
     background:var(--bg); color:var(--text); font-size:13px;
   }
   #settings .row + label{margin-top:12px;}
+  #settings .danger{background:var(--danger); color:#fff; margin-top:12px;}
+  .acct{display:flex; align-items:center; gap:10px; margin-bottom:12px; font-size:13px;}
+  .acct img{width:36px; height:36px; border-radius:50%;}
+  .acct .info{flex:1; min-width:0;}
+  .acct small{display:block; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  #accountBox{margin-bottom:4px;}
 
   .deep-btn{
     background:none; border:none; color:var(--text-dim); cursor:pointer;
@@ -204,6 +212,7 @@
 </header>
 
 <div id="settings">
+  <div id="accountBox"></div>
   <label for="providerSelect">Chọn AI để Miu trò chuyện</label>
   <div class="row">
     <select id="providerSelect">
@@ -213,18 +222,19 @@
   </div>
   <label for="apiKeyInput">Gemini API Key (lưu trong trình duyệt này, không gửi đi đâu khác)</label>
   <div class="row">
-    <input type="password" id="apiKeyInput" placeholder="Dán Gemini API key vào đây...">
+    <input type="password" id="apiKeyInput" placeholder="Dán Gemini API key vào đây..." autocomplete="off" spellcheck="false">
     <button id="saveKeyBtn">Lưu</button>
   </div>
   <label for="deepseekKeyInput">DeepSeek API Key (lưu trong trình duyệt này, không gửi đi đâu khác)</label>
   <div class="row">
-    <input type="password" id="deepseekKeyInput" placeholder="Dán DeepSeek API key vào đây...">
+    <input type="password" id="deepseekKeyInput" placeholder="Dán DeepSeek API key vào đây..." autocomplete="off" spellcheck="false">
     <button id="saveDeepseekBtn">Lưu</button>
   </div>
   <div class="hint">
     Gemini: lấy key tại aistudio.google.com → API Keys. DeepSeek: lấy key tại platform.deepseek.com → API keys (thường cần nạp một ít số dư để dùng).
     Gõ "help" trong khung chat để xem các lệnh offline (không cần API key).
   </div>
+  <div class="row"><button class="danger" id="clearDataBtn">Xoá chat và API key trên thiết bị này</button></div>
 </div>
 
 <div id="chat"></div>
@@ -274,6 +284,8 @@ const drawerClose = document.getElementById('drawerClose');
 const newChatBtn = document.getElementById('newChatBtn');
 const chatListEl = document.getElementById('chatList');
 const chatTitleEl = document.getElementById('chatTitle');
+const accountBox = document.getElementById('accountBox');
+const clearDataBtn = document.getElementById('clearDataBtn');
 
 const GEMINI_MODEL = "gemini-3.5-flash-lite";
 const DEEPSEEK_MODEL = "deepseek-v4-flash";
@@ -288,6 +300,70 @@ const SYSTEM_PERSONA =
   "dung vai icon ✨🐾 cho vui nhung dung lam dung. Tra loi bang tieng Viet " +
   "co dau day du.";
 
+// ---------------- Luu tru (Store): moi truy cap localStorage deu di qua day ----------------
+// Khach giu tien to "miu_" (giong ten cu nen khong mat du lieu); moi tai khoan Google co tien to rieng.
+const Store = {
+  prefix: 'miu_',
+  KEYS: ['api_key', 'deepseek_key', 'provider', 'deep', 'chats', 'current', 'history'],
+  setPrefix(p){ this.prefix = p; },
+  getRaw(full){ try { return localStorage.getItem(full); } catch (e) { return null; } },
+  setRaw(full, v){ try { localStorage.setItem(full, String(v)); return true; } catch (e) { return false; } },
+  removeRaw(full){ try { localStorage.removeItem(full); } catch (e) {} },
+  getRawJSON(full, fb){ const v = this.getRaw(full); if (v === null) return fb; try { return JSON.parse(v); } catch (e) { return fb; } },
+  setRawJSON(full, obj){ return this.setRaw(full, JSON.stringify(obj)); },
+  get(name, fb = null){ const v = this.getRaw(this.prefix + name); return v === null ? fb : v; },
+  set(name, v){ return this.setRaw(this.prefix + name, v); },
+  remove(name){ this.removeRaw(this.prefix + name); },
+  getJSON(name, fb){ return this.getRawJSON(this.prefix + name, fb); },
+  setJSON(name, obj){ return this.setRawJSON(this.prefix + name, obj); },
+  clearAll(){ this.KEYS.forEach(k => this.remove(k)); },
+};
+
+// ---------------- Tai khoan Google (khong bat buoc) ----------------
+// Dan "Client ID" lay tu Google Cloud Console vao giua 2 dau nhay de bat nut dang nhap.
+const GOOGLE_CLIENT_ID = "";
+const Account = {
+  user: null,
+  init(){
+    const u = Store.getRawJSON('miu_account', null);
+    if (u && u.sub){
+      this.user = u;
+      Store.setPrefix('miu_u_' + u.sub + '_');
+      this.adoptGuestData();
+    }
+  },
+  // Lan dau dang nhap: neu tai khoan chua co du lieu thi nhan du lieu cua che do khach
+  adoptGuestData(){
+    if (Store.get('chats') !== null) return;
+    Store.KEYS.forEach(k => { const v = Store.getRaw('miu_' + k); if (v !== null) Store.set(k, v); });
+  },
+  parseJwt(jwt){
+    try {
+      const b64 = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
+      const bytes = Uint8Array.from(atob(padded), c => c.charCodeAt(0));
+      return JSON.parse(new TextDecoder().decode(bytes));
+    } catch (e) { return null; }
+  },
+  // Luu y: chi dung de hien thi va tach du lieu theo tai khoan, chua phai xac thuc phia may chu
+  onCredential(resp){
+    const p = Account.parseJwt(resp && resp.credential);
+    const okIss = p && (p.iss === 'https://accounts.google.com' || p.iss === 'accounts.google.com');
+    if (!p || !okIss || p.aud !== GOOGLE_CLIENT_ID || !p.sub || (p.exp && p.exp * 1000 < Date.now())){
+      addBubble("Đăng nhập Google chưa thành công, bạn thử lại nhé.", "miu", false);
+      return;
+    }
+    Store.setRawJSON('miu_account', { sub: p.sub, name: p.name || p.email || '', email: p.email || '', picture: p.picture || '' });
+    location.reload();
+  },
+  signOut(){
+    Store.removeRaw('miu_account');
+    try { google.accounts.id.disableAutoSelect(); } catch (e) {}
+    location.reload();
+  },
+};
+Account.init();
+
 const GREETING = "Chào bạn! Mình là Miu 🐾 Gõ \"help\" để xem mình làm được gì nhé.";
 const MAX_CHATS = 50;
 let chats = {};
@@ -299,13 +375,13 @@ function isBusy(){ return busy && (Date.now() - busySince) < 120000; } // tu mo 
 let liveActive = false;
 let waitingForReply = false;
 let recognition = null;
-let apiKey = localStorage.getItem('miu_api_key') || '';
+let apiKey = Store.get('api_key', '');
 apiKeyInput.value = apiKey;
-let deepMode = localStorage.getItem('miu_deep') === '1';
+let deepMode = Store.get('deep') === '1';
 deepBtn.classList.toggle('active', deepMode);
 let attachments = [];
-let provider = localStorage.getItem('miu_provider') || 'gemini';
-let deepseekKey = localStorage.getItem('miu_deepseek_key') || '';
+let provider = Store.get('provider', 'gemini');
+let deepseekKey = Store.get('deepseek_key', '');
 providerSelect.value = provider;
 deepseekKeyInput.value = deepseekKey;
 
@@ -324,25 +400,21 @@ function persistChats(){
   Object.values(chats).forEach(c => {
     out[c.id] = { id: c.id, title: c.title, updated: c.updated, history: c.history.slice(-60) };
   });
-  try {
-    localStorage.setItem('miu_chats', JSON.stringify(out));
-    localStorage.setItem('miu_current', currentId);
-  } catch (e) { /* bo qua neu day bo nho */ }
+  Store.setJSON('chats', out);
+  Store.set('current', currentId);
 }
 function loadChats(){
-  let saved = null;
-  try { saved = JSON.parse(localStorage.getItem('miu_chats') || 'null'); } catch (e) {}
+  const saved = Store.getJSON('chats', null);
   if (saved && Object.keys(saved).length){
     chats = saved;
-    currentId = localStorage.getItem('miu_current');
+    currentId = Store.get('current');
     if (!chats[currentId]){
       currentId = Object.values(chats).sort((a, b) => b.updated - a.updated)[0].id;
     }
   } else {
     // Lan dau co tinh nang nhieu chat: chuyen lich su cu thanh chat dau tien
     const c = newChatObj();
-    let old = [];
-    try { old = JSON.parse(localStorage.getItem('miu_history') || '[]'); } catch (e) {}
+    const old = Store.getJSON('history', []);
     if (old.length){
       c.history = old;
       const u = old.find(m => m.who === 'user');
@@ -473,22 +545,81 @@ newBtn.onclick = newChat;
 loadChats();
 renderChat();
 
+function loadGoogleLogin(container){
+  const sc = document.createElement('script');
+  sc.src = 'https://accounts.google.com/gsi/client';
+  sc.async = true;
+  sc.onload = () => {
+    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: Account.onCredential, ux_mode: 'popup' });
+    google.accounts.id.renderButton(container, { theme: 'outline', size: 'large', text: 'signin_with', locale: 'vi' });
+  };
+  sc.onerror = () => { container.textContent = 'Không tải được nút đăng nhập Google, kiểm tra mạng nhé.'; };
+  document.head.appendChild(sc);
+}
+function renderAccount(){
+  accountBox.textContent = '';
+  const u = Account.user;
+  const note = document.createElement('div');
+  note.className = 'hint';
+  if (u){
+    const row = document.createElement('div');
+    row.className = 'acct';
+    if (safeHttpUrl(u.picture)){
+      const im = document.createElement('img');
+      im.src = u.picture;
+      im.alt = '';
+      row.appendChild(im);
+    }
+    const info = document.createElement('div');
+    info.className = 'info';
+    info.appendChild(document.createTextNode(u.name || 'Tài khoản Google'));
+    const em = document.createElement('small');
+    em.textContent = u.email || '';
+    info.appendChild(em);
+    row.appendChild(info);
+    const out = document.createElement('button');
+    out.textContent = 'Đăng xuất';
+    out.onclick = () => Account.signOut();
+    row.appendChild(out);
+    accountBox.appendChild(row);
+    note.textContent = 'Chat và API key đang lưu riêng cho tài khoản này (chỉ trên thiết bị này).';
+    accountBox.appendChild(note);
+  } else if (GOOGLE_CLIENT_ID){
+    const lab = document.createElement('label');
+    lab.textContent = 'Đăng nhập (không bắt buộc) để mỗi tài khoản có chat và API key riêng';
+    accountBox.appendChild(lab);
+    const holder = document.createElement('div');
+    accountBox.appendChild(holder);
+    loadGoogleLogin(holder);
+  } else {
+    note.textContent = 'Đăng nhập Google: chưa bật (cần dán Client ID vào biến GOOGLE_CLIENT_ID trong file index.html).';
+    accountBox.appendChild(note);
+  }
+}
+renderAccount();
+
+clearDataBtn.onclick = () => {
+  if (!confirm('Xoá toàn bộ chat và API key của tài khoản hiện tại trên thiết bị này?')) return;
+  Store.clearAll();
+  location.reload();
+};
+
 gearBtn.onclick = () => settingsEl.classList.toggle('open');
 saveKeyBtn.onclick = () => {
   apiKey = apiKeyInput.value.trim();
-  localStorage.setItem('miu_api_key', apiKey);
+  Store.set('api_key', apiKey);
   settingsEl.classList.remove('open');
   addBubble(apiKey ? "Đã lưu API key! Giờ mình trò chuyện tự do được rồi." : "Đã xoá API key.", "miu", false);
 };
 
 providerSelect.onchange = () => {
   provider = providerSelect.value;
-  localStorage.setItem('miu_provider', provider);
+  Store.set('provider', provider);
   addBubble(provider === 'deepseek' ? "Đã chuyển sang DeepSeek!" : "Đã chuyển sang Gemini!", "miu", false);
 };
 saveDeepseekBtn.onclick = () => {
   deepseekKey = deepseekKeyInput.value.trim();
-  localStorage.setItem('miu_deepseek_key', deepseekKey);
+  Store.set('deepseek_key', deepseekKey);
   settingsEl.classList.remove('open');
   addBubble(deepseekKey ? "Đã lưu DeepSeek API key! Nhớ chọn DeepSeek ở mục \"Chọn AI\" nếu muốn dùng nhé." : "Đã xoá DeepSeek API key.", "miu", false);
 };
@@ -537,6 +668,7 @@ const HELP_TEXT =
 - "game 5" (hoặc "noi tu") — chơi nối từ
 - "nhac uong nuoc [so phut]" — bật nhắc uống nước định kỳ (mặc định 60 phút)
 - "tat nhac uong nuoc" — tắt nhắc uống nước
+- ⚙ → Đăng nhập Google (nếu đã bật) — mỗi tài khoản có chat và API key riêng
 - Nút ☰ — xem danh sách chat, nút ＋ — tạo chat mới (mỗi chat tự đặt tên theo tin nhắn đầu tiên)
 - Nút 🧠 — bật/tắt suy nghĩ sâu (trả lời lâu hơn nhưng kỹ hơn, Gemini còn tìm thêm nguồn)
 - Nút 📎 / 📷 — đính kèm tệp, ảnh hoặc chụp ảnh để hỏi Miu (Gemini đọc được ảnh và PDF)
@@ -678,51 +810,28 @@ function stopWaterReminder(){
   addBubble("Đã tắt nhắc uống nước.", "miu");
 }
 
+// ---------------- Lenh offline: moi lenh la {match, run}, xet theo thu tu ----------------
+const has = (t, ...keys) => keys.some(k => t.includes(k));
+const firstNumber = (t, fallback) => { const m = t.match(/\d+/); return m ? parseInt(m[0], 10) : fallback; };
+const COMMANDS = [
+  { match: t => t === 'help' || t === 'tro giup', run: () => addBubble(HELP_TEXT, "miu") },
+  { match: t => has(t, 'tao mat khau', 'sinh mat khau'),
+    run: t => { const len = firstNumber(t, 12); addBubble(`Mật khẩu ${len} ký tự của bạn:\n${generatePassword(len)}`, "miu"); } },
+  { match: t => has(t, 'dem nguoc'), run: t => startCountdown(firstNumber(t, 10)) },
+  // Lenh TAT dat truoc lenh BAT vi "tat nhac uong nuoc" cung chua chuoi con "nhac uong nuoc"
+  { match: t => has(t, 'tat nhac uong nuoc', 'dung nhac uong nuoc', 'thoat nhac uong nuoc'), run: () => stopWaterReminder() },
+  { match: t => has(t, 'nhac uong nuoc', 'bat nhac uong nuoc'), run: t => startWaterReminder(t) },
+  { match: t => has(t, 'thoat game 4', 'dung game 4', 'huy game 4'), run: () => animalStop() },
+  { match: t => has(t, 'game 4', 'doan con vat'), run: () => animalStart() },
+  { match: t => has(t, 'thoat game 5', 'dung game 5', 'huy game 5'), run: () => wordchainStop() },
+  { match: t => has(t, 'game 5', 'noi tu'), run: () => wordchainStart() },
+];
 function handleLocalCommand(raw){
   const text = stripDiacritics(raw.toLowerCase()).trim();
-  if (text === 'help' || text === 'tro giup'){
-    addBubble(HELP_TEXT, "miu");
-    return true;
-  }
-  if (text.includes('tao mat khau') || text.includes('sinh mat khau')){
-    const match = text.match(/\d+/);
-    const len = match ? parseInt(match[0], 10) : 12;
-    addBubble(`Mật khẩu ${len} ký tự của bạn:\n${generatePassword(len)}`, "miu");
-    return true;
-  }
-  if (text.includes('dem nguoc')){
-    const match = text.match(/\d+/);
-    const sec = match ? parseInt(match[0], 10) : 10;
-    startCountdown(sec);
-    return true;
-  }
-  if (text.includes('tat nhac uong nuoc') || text.includes('dung nhac uong nuoc') || text.includes('thoat nhac uong nuoc')){
-    stopWaterReminder();
-    return true;
-  }
-  if (text.includes('nhac uong nuoc') || text.includes('bat nhac uong nuoc')){
-    startWaterReminder(text);
-    return true;
-  }
-  // Kiem tra lenh THOAT truoc lenh BAT de "thoat game 4" khong bi hieu
-  // nham thanh lenh bat game 4 (vi no cung chua chuoi con "game 4").
-  if (text.includes('thoat game 4') || text.includes('dung game 4') || text.includes('huy game 4')){
-    animalStop();
-    return true;
-  }
-  if (text.includes('game 4') || text.includes('doan con vat')){
-    animalStart();
-    return true;
-  }
-  if (text.includes('thoat game 5') || text.includes('dung game 5') || text.includes('huy game 5')){
-    wordchainStop();
-    return true;
-  }
-  if (text.includes('game 5') || text.includes('noi tu')){
-    wordchainStart();
-    return true;
-  }
-  return false;
+  const cmd = COMMANDS.find(c => c.match(text));
+  if (!cmd) return false;
+  cmd.run(text);
+  return true;
 }
 
 // ---------------- Dinh kem tep / anh / chup anh ----------------
@@ -830,7 +939,7 @@ camInput.onchange = async (e) => { await addFiles(e.target.files); e.target.valu
 
 deepBtn.onclick = () => {
   deepMode = !deepMode;
-  localStorage.setItem('miu_deep', deepMode ? '1' : '0');
+  Store.set('deep', deepMode ? '1' : '0');
   deepBtn.classList.toggle('active', deepMode);
   addBubble(deepMode
     ? "Đã bật suy nghĩ sâu 🧠: mình sẽ trả lời lâu hơn nhưng kỹ hơn (Gemini còn tìm thêm nguồn trên mạng)."
@@ -852,71 +961,45 @@ function thinkingText(){
   return deepMode ? "Miu đang suy nghĩ sâu... (có thể mất khá lâu)" : "Miu đang gõ...";
 }
 
-async function askMiu(userText, atts = []){
-  busy = true;
-  busySince = Date.now();
-  try {
-    if (provider === 'deepseek') return await askDeepseek(userText, atts);
-    return await askGemini(userText, atts);
-  } finally {
-    busy = false;
-  }
+class ProviderError extends Error {
+  constructor(userMessage){ super(userMessage); this.userMessage = userMessage; }
 }
 
-async function askDeepseek(userText, atts = []){
-  const thinking = addBubble(thinkingText(), "miu typing", false);
-  if (!deepseekKey){
-    thinking.remove();
-    addBubble("Bạn chưa lưu DeepSeek API key (bấm ⚙ góc trên để thêm) nên mình chỉ làm được các lệnh offline thôi. Gõ \"help\" xem danh sách nhé.", "miu");
-    return;
-  }
-  if (atts.some(a => a.kind !== 'text')){
-    thinking.remove();
-    addBubble("DeepSeek chưa đọc được ảnh hoặc PDF. Bạn bấm ⚙ chọn Gemini để mình xem ảnh/PDF nhé.", "miu");
-    return;
-  }
-  try {
-    const sys = SYSTEM_PERSONA + (deepMode ? DEEP_HINT : '');
-    const messages = [{ role: 'system', content: sys }]
-      .concat(historyForModel().map(m => ({ role: m.who === 'user' ? 'user' : 'assistant', content: m.text })))
-      .concat([{ role: 'user', content: userText + attachedTextBlock(atts) }]);
-    const res = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + deepseekKey,
-      },
-      body: JSON.stringify({
-        model: DEEPSEEK_MODEL,
-        messages,
-        thinking: { type: deepMode ? 'enabled' : 'disabled' },
-        stream: false,
-      }),
-    });
-    const data = await res.json();
-    thinking.remove();
-    if (!res.ok){
-      addBubble(`Lỗi gọi DeepSeek (${res.status}): ${data?.error?.message || 'không rõ nguyên nhân'}`, "miu");
-      return;
-    }
-    const reply = data?.choices?.[0]?.message?.content || "Mình chưa nghĩ ra câu trả lời, bạn hỏi lại giúp mình nhé.";
-    addBubble(reply, "miu");
-  } catch (err){
-    thinking.remove();
-    addBubble("Không kết nối được tới DeepSeek. Kiểm tra lại mạng hoặc API key nhé (hoặc trình duyệt đang chặn kết nối tới DeepSeek).", "miu");
-  }
+// Chi cho phep lien ket http(s), chan kieu "javascript:" tu du lieu ben ngoai
+function safeHttpUrl(u){ return typeof u === 'string' && /^https?:\/\//i.test(u); }
+
+function appendSources(bubble, sources){
+  const links = sources.filter(w => w && safeHttpUrl(w.uri));
+  if (!links.length) return;
+  const box = document.createElement('div');
+  box.className = 'sources';
+  box.appendChild(document.createTextNode('Nguồn: '));
+  links.forEach((w, i) => {
+    if (i) box.appendChild(document.createTextNode(' · '));
+    const a = document.createElement('a');
+    a.href = w.uri; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    a.textContent = w.title || w.uri;
+    box.appendChild(a);
+  });
+  bubble.appendChild(box);
 }
 
-// Goi Gemini, tu thu lai neu may chu qua tai (503) hoac bi gioi han tam thoi (429)
+// Goi Gemini: khoa gui qua header (khong nam tren dia chi URL); tu thu lai neu qua tai (503) hoac bi gioi han tam thoi (429)
 async function geminiFetch(body){
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const base = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+  const post = (url, extra) => fetch(url, {
+    method: 'POST',
+    headers: Object.assign({ 'Content-Type': 'application/json' }, extra),
+    body: JSON.stringify(body),
+  });
   let res, data;
   for (let attempt = 0; attempt < 3; attempt++){
-    res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    try {
+      res = await post(base, { 'x-goog-api-key': apiKey });
+    } catch (e) {
+      // Du phong: neu trinh duyet chan header tuy chinh thi dung cach cu (khoa tren URL)
+      res = await post(base + '?key=' + encodeURIComponent(apiKey), {});
+    }
     data = await res.json().catch(() => ({}));
     if (res.status !== 503 && res.status !== 429) break;
     await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
@@ -924,14 +1007,13 @@ async function geminiFetch(body){
   return { res, data };
 }
 
-async function askGemini(userText, atts = []){
-  const thinking = addBubble(thinkingText(), "miu typing", false);
-  if (!apiKey){
-    thinking.remove();
-    addBubble("Bạn chưa lưu Gemini API key (bấm ⚙ góc trên để thêm) nên mình chỉ làm được các lệnh offline thôi. Gõ \"help\" xem danh sách nhé.", "miu");
-    return;
-  }
-  try {
+// ----- Strategy: moi nha cung cap AI la 1 doi tuong cung giao dien ask(userText, atts) -> {text, sources} -----
+const GeminiProvider = {
+  networkMsg: "Không kết nối được tới Gemini. Kiểm tra lại mạng hoặc API key nhé.",
+  async ask(userText, atts){
+    if (!apiKey){
+      throw new ProviderError("Bạn chưa lưu Gemini API key (bấm ⚙ góc trên để thêm) nên mình chỉ làm được các lệnh offline thôi. Gõ \"help\" xem danh sách nhé.");
+    }
     const parts = [{ text: userText + attachedTextBlock(atts) }];
     atts.forEach(a => {
       if (a.kind === 'image' || a.kind === 'pdf') parts.push({ inlineData: { mimeType: a.mime, data: a.data } });
@@ -957,35 +1039,72 @@ async function askGemini(userText, atts = []){
       result = await geminiFetch(body);
       if (result.res.status !== 400) break;
     }
-    thinking.remove();
     const { res, data } = result;
     if (!res.ok){
-      addBubble(`Lỗi gọi Gemini (${res.status}): ${data?.error?.message || 'không rõ nguyên nhân'}`, "miu");
-      return;
+      throw new ProviderError(`Lỗi gọi Gemini (${res.status}): ${data?.error?.message || 'không rõ nguyên nhân'}`);
     }
     const cand = data?.candidates?.[0];
-    const reply = (cand?.content?.parts || []).filter(p => !p.thought).map(p => p.text || '').join('')
+    const text = (cand?.content?.parts || []).filter(p => !p.thought).map(p => p.text || '').join('')
       || "Mình chưa nghĩ ra câu trả lời, bạn hỏi lại giúp mình nhé.";
-    const bubble = addBubble(reply, "miu");
     const seen = new Set();
     const sources = (cand?.groundingMetadata?.groundingChunks || [])
       .map(c => c.web).filter(w => w && w.uri && !seen.has(w.uri) && seen.add(w.uri)).slice(0, 5);
-    if (sources.length){
-      const box = document.createElement('div');
-      box.className = 'sources';
-      box.appendChild(document.createTextNode('Nguồn: '));
-      sources.forEach((w, i) => {
-        if (i) box.appendChild(document.createTextNode(' · '));
-        const a = document.createElement('a');
-        a.href = w.uri; a.target = '_blank'; a.rel = 'noopener';
-        a.textContent = w.title || w.uri;
-        box.appendChild(a);
-      });
-      bubble.appendChild(box);
+    return { text, sources };
+  },
+};
+
+const DeepseekProvider = {
+  networkMsg: "Không kết nối được tới DeepSeek. Kiểm tra lại mạng hoặc API key nhé (hoặc trình duyệt đang chặn kết nối tới DeepSeek).",
+  async ask(userText, atts){
+    if (!deepseekKey){
+      throw new ProviderError("Bạn chưa lưu DeepSeek API key (bấm ⚙ góc trên để thêm) nên mình chỉ làm được các lệnh offline thôi. Gõ \"help\" xem danh sách nhé.");
     }
+    if (atts.some(a => a.kind !== 'text')){
+      throw new ProviderError("DeepSeek chưa đọc được ảnh hoặc PDF. Bạn bấm ⚙ chọn Gemini để mình xem ảnh/PDF nhé.");
+    }
+    const sys = SYSTEM_PERSONA + (deepMode ? DEEP_HINT : '');
+    const messages = [{ role: 'system', content: sys }]
+      .concat(historyForModel().map(m => ({ role: m.who === 'user' ? 'user' : 'assistant', content: m.text })))
+      .concat([{ role: 'user', content: userText + attachedTextBlock(atts) }]);
+    const res = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + deepseekKey,
+      },
+      body: JSON.stringify({
+        model: DEEPSEEK_MODEL,
+        messages,
+        thinking: { type: deepMode ? 'enabled' : 'disabled' },
+        stream: false,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok){
+      throw new ProviderError(`Lỗi gọi DeepSeek (${res.status}): ${data?.error?.message || 'không rõ nguyên nhân'}`);
+    }
+    const text = data?.choices?.[0]?.message?.content || "Mình chưa nghĩ ra câu trả lời, bạn hỏi lại giúp mình nhé.";
+    return { text, sources: [] };
+  },
+};
+
+const Providers = { gemini: GeminiProvider, deepseek: DeepseekProvider };
+
+async function askMiu(userText, atts = []){
+  busy = true;
+  busySince = Date.now();
+  const prov = Providers[provider] || GeminiProvider;
+  const thinking = addBubble(thinkingText(), "miu typing", false);
+  try {
+    const out = await prov.ask(userText, atts);
+    thinking.remove();
+    const bubble = addBubble(out.text, "miu");
+    if (out.sources && out.sources.length) appendSources(bubble, out.sources);
   } catch (err){
     thinking.remove();
-    addBubble("Không kết nối được tới Gemini. Kiểm tra lại mạng hoặc API key nhé.", "miu");
+    addBubble(err instanceof ProviderError ? err.userMessage : prov.networkMsg, "miu");
+  } finally {
+    busy = false;
   }
 }
 

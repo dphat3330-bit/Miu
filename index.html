@@ -62,8 +62,9 @@
   }
   .paw{font-size:26px;}
   header h1{font-size:18px; margin:0; font-weight:600;}
-  header p{margin:0; font-size:12px; color:var(--text-dim);}
-  .header-text{flex:1;}
+  header p{margin:0; font-size:12px; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  header{gap:6px;}
+  .header-text{flex:1; min-width:0;}
   .gear{
     background:none; border:none; color:var(--text-dim); cursor:pointer;
     font-size:20px; padding:6px; border-radius:50%;
@@ -129,6 +130,29 @@
   }
   .bar-btn:hover{color:var(--text); background:rgba(255,255,255,.06);}
 
+  #drawerMask{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:40;
+  }
+  #drawerMask.open{display:block;}
+  #drawer{
+    position:fixed; top:0; bottom:0; left:0; width:min(84vw, 330px); z-index:50;
+    background:var(--bg-soft); color:var(--text); display:flex; flex-direction:column;
+    padding:calc(env(safe-area-inset-top, 0px) + 14px) 14px calc(env(safe-area-inset-bottom, 0px) + 14px);
+    transform:translateX(-102%); transition:transform .2s ease; box-shadow:4px 0 24px rgba(0,0,0,.35);
+  }
+  #drawer.open{transform:translateX(0);}
+  .drawer-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; font-size:16px;}
+  .drawer-head button{background:none; border:none; color:var(--text-dim); font-size:18px; cursor:pointer; padding:6px;}
+  .new-chat{
+    width:100%; padding:12px; border-radius:12px; border:none; background:var(--accent);
+    color:#1b1625; font-weight:700; font-size:14px; cursor:pointer; margin-bottom:12px;
+  }
+  #chatList{flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:6px;}
+  .chat-item{display:flex; align-items:center; border-radius:12px; background:var(--bg);}
+  .chat-item.active{outline:2px solid var(--accent);}
+  .chat-title{flex:1; min-width:0; padding:12px; font-size:14px; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .chat-item button{background:none; border:none; font-size:16px; padding:10px; cursor:pointer; color:var(--text-dim);}
+
   #chat{
     flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px;
   }
@@ -168,11 +192,12 @@
 <body>
 
 <header>
-  <div class="paw">🐾</div>
+  <button class="gear" id="menuBtn" title="Danh sách chat">☰</button>
   <div class="header-text">
-    <h1>Miu</h1>
-    <p>Trợ lý AI của bạn</p>
+    <h1>🐾 Miu</h1>
+    <p id="chatTitle">Chat mới</p>
   </div>
+  <button class="gear" id="newBtn" title="Chat mới">＋</button>
   <button class="deep-btn" id="deepBtn" title="Suy nghĩ sâu (trả lời lâu hơn nhưng kỹ hơn, có tìm thêm nguồn)">🧠</button>
   <button class="live-btn" id="liveBtn" title="Chế độ live (nói chuyện bằng giọng nói)">🎙️</button>
   <button class="gear" id="gearBtn" title="Cài đặt">⚙</button>
@@ -216,6 +241,13 @@
   accept="image/*,application/pdf,text/*,.txt,.md,.csv,.json,.js,.py,.html,.css,.xml,.log,.yml,.yaml">
 <input type="file" id="camInput" accept="image/*" capture="environment" hidden>
 
+<div id="drawerMask"></div>
+<aside id="drawer">
+  <div class="drawer-head"><strong>Cuộc trò chuyện</strong><button id="drawerClose">✕</button></div>
+  <button class="new-chat" id="newChatBtn">＋ Chat mới</button>
+  <div id="chatList"></div>
+</aside>
+
 <script>
 const chatEl = document.getElementById('chat');
 const inputEl = document.getElementById('input');
@@ -234,6 +266,14 @@ const camBtn = document.getElementById('camBtn');
 const fileInput = document.getElementById('fileInput');
 const camInput = document.getElementById('camInput');
 const attachBar = document.getElementById('attachBar');
+const menuBtn = document.getElementById('menuBtn');
+const newBtn = document.getElementById('newBtn');
+const drawer = document.getElementById('drawer');
+const drawerMask = document.getElementById('drawerMask');
+const drawerClose = document.getElementById('drawerClose');
+const newChatBtn = document.getElementById('newChatBtn');
+const chatListEl = document.getElementById('chatList');
+const chatTitleEl = document.getElementById('chatTitle');
 
 const GEMINI_MODEL = "gemini-3.5-flash-lite";
 const DEEPSEEK_MODEL = "deepseek-v4-flash";
@@ -248,7 +288,14 @@ const SYSTEM_PERSONA =
   "dung vai icon ✨🐾 cho vui nhung dung lam dung. Tra loi bang tieng Viet " +
   "co dau day du.";
 
-let history = JSON.parse(localStorage.getItem('miu_history') || '[]');
+const GREETING = "Chào bạn! Mình là Miu 🐾 Gõ \"help\" để xem mình làm được gì nhé.";
+const MAX_CHATS = 50;
+let chats = {};
+let currentId = null;
+let history = [];
+let busy = false;
+let busySince = 0;
+function isBusy(){ return busy && (Date.now() - busySince) < 120000; } // tu mo khoa sau 2 phut neu bi treo
 let liveActive = false;
 let waitingForReply = false;
 let recognition = null;
@@ -262,8 +309,57 @@ let deepseekKey = localStorage.getItem('miu_deepseek_key') || '';
 providerSelect.value = provider;
 deepseekKeyInput.value = deepseekKey;
 
+// ---------------- Nhieu cuoc tro chuyen (chat) ----------------
+function makeTitle(text){
+  let t = String(text).split('\n')[0].replace(/^📎\s*/, '').trim();
+  if (!t) t = 'Chat mới';
+  return t.length > 30 ? t.slice(0, 30).trimEnd() + '…' : t;
+}
+function newChatObj(){
+  const id = 'c' + Date.now() + Math.floor(Math.random() * 1000);
+  return { id, title: null, history: [{ who: 'miu', text: GREETING }], updated: Date.now() };
+}
+function persistChats(){
+  const out = {};
+  Object.values(chats).forEach(c => {
+    out[c.id] = { id: c.id, title: c.title, updated: c.updated, history: c.history.slice(-60) };
+  });
+  try {
+    localStorage.setItem('miu_chats', JSON.stringify(out));
+    localStorage.setItem('miu_current', currentId);
+  } catch (e) { /* bo qua neu day bo nho */ }
+}
+function loadChats(){
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('miu_chats') || 'null'); } catch (e) {}
+  if (saved && Object.keys(saved).length){
+    chats = saved;
+    currentId = localStorage.getItem('miu_current');
+    if (!chats[currentId]){
+      currentId = Object.values(chats).sort((a, b) => b.updated - a.updated)[0].id;
+    }
+  } else {
+    // Lan dau co tinh nang nhieu chat: chuyen lich su cu thanh chat dau tien
+    const c = newChatObj();
+    let old = [];
+    try { old = JSON.parse(localStorage.getItem('miu_history') || '[]'); } catch (e) {}
+    if (old.length){
+      c.history = old;
+      const u = old.find(m => m.who === 'user');
+      if (u) c.title = makeTitle(u.text);
+    }
+    chats[c.id] = c;
+    currentId = c.id;
+  }
+  history = chats[currentId].history;
+  persistChats();
+}
 function saveHistory(){
-  localStorage.setItem('miu_history', JSON.stringify(history.slice(-60)));
+  if (chats[currentId]) chats[currentId].updated = Date.now();
+  persistChats();
+}
+function updateTitleUI(){
+  chatTitleEl.textContent = (chats[currentId] && chats[currentId].title) || 'Chat mới';
 }
 
 function addBubble(text, who, store = true){
@@ -274,6 +370,11 @@ function addBubble(text, who, store = true){
   chatEl.scrollTop = chatEl.scrollHeight;
   if (store){
     history.push({who, text});
+    const cur = chats[currentId];
+    if (who === 'user' && cur && !cur.title){
+      cur.title = makeTitle(text);
+      updateTitleUI();
+    }
     saveHistory();
   }
   if (who === 'miu' && liveActive){
@@ -283,12 +384,94 @@ function addBubble(text, who, store = true){
   return div;
 }
 
-// Khoi phuc lich su chat cu (neu co)
-if (history.length){
+function renderChat(){
+  const was = liveActive;
+  liveActive = false; // khong doc to lai tin nhan cu
+  chatEl.textContent = '';
   history.forEach(m => addBubble(m.text, m.who, false));
-} else {
-  addBubble("Chào bạn! Mình là Miu 🐾 Gõ \"help\" để xem mình làm được gì nhé.", "miu");
+  liveActive = was;
+  chatEl.scrollTop = chatEl.scrollHeight;
+  updateTitleUI();
 }
+
+function renderChatList(){
+  chatListEl.textContent = '';
+  Object.values(chats).sort((a, b) => b.updated - a.updated).forEach(c => {
+    const row = document.createElement('div');
+    row.className = 'chat-item' + (c.id === currentId ? ' active' : '');
+    const t = document.createElement('span');
+    t.className = 'chat-title';
+    t.textContent = c.title || 'Chat mới';
+    t.onclick = () => switchChat(c.id);
+    const d = document.createElement('button');
+    d.textContent = '🗑';
+    d.title = 'Xoá chat này';
+    d.onclick = (e) => { e.stopPropagation(); deleteChat(c.id); };
+    row.appendChild(t);
+    row.appendChild(d);
+    chatListEl.appendChild(row);
+  });
+}
+function openDrawer(){
+  renderChatList();
+  drawer.classList.add('open');
+  drawerMask.classList.add('open');
+}
+function closeDrawer(){
+  drawer.classList.remove('open');
+  drawerMask.classList.remove('open');
+}
+function warnBusy(){
+  closeDrawer();
+  addBubble("Miu đang trả lời, bạn chờ xíu rồi chuyển chat nhé.", "miu", false);
+}
+function switchChat(id){
+  if (id === currentId){ closeDrawer(); return; }
+  if (isBusy()){ warnBusy(); return; }
+  currentId = id;
+  history = chats[id].history;
+  persistChats();
+  renderChat();
+  closeDrawer();
+}
+function newChat(){
+  if (isBusy()){ warnBusy(); return; }
+  closeDrawer();
+  const cur = chats[currentId];
+  if (cur && !cur.history.some(m => m.who === 'user')) return; // chat hien tai con trong, dung lai
+  const oldest = Object.values(chats).filter(c => c.id !== currentId).sort((a, b) => a.updated - b.updated);
+  while (Object.keys(chats).length >= MAX_CHATS && oldest.length) delete chats[oldest.shift().id];
+  const c = newChatObj();
+  chats[c.id] = c;
+  currentId = c.id;
+  history = c.history;
+  persistChats();
+  renderChat();
+}
+function deleteChat(id){
+  if (isBusy()){ warnBusy(); return; }
+  if (!confirm('Xoá cuộc trò chuyện này?')) return;
+  delete chats[id];
+  if (!Object.keys(chats).length){
+    const c = newChatObj();
+    chats[c.id] = c;
+  }
+  if (!chats[currentId]){
+    currentId = Object.values(chats).sort((a, b) => b.updated - a.updated)[0].id;
+    history = chats[currentId].history;
+    renderChat();
+  }
+  persistChats();
+  renderChatList();
+}
+menuBtn.onclick = openDrawer;
+drawerClose.onclick = closeDrawer;
+drawerMask.onclick = closeDrawer;
+newChatBtn.onclick = newChat;
+newBtn.onclick = newChat;
+
+loadChats();
+renderChat();
 
 gearBtn.onclick = () => settingsEl.classList.toggle('open');
 saveKeyBtn.onclick = () => {
@@ -354,6 +537,7 @@ const HELP_TEXT =
 - "game 5" (hoặc "noi tu") — chơi nối từ
 - "nhac uong nuoc [so phut]" — bật nhắc uống nước định kỳ (mặc định 60 phút)
 - "tat nhac uong nuoc" — tắt nhắc uống nước
+- Nút ☰ — xem danh sách chat, nút ＋ — tạo chat mới (mỗi chat tự đặt tên theo tin nhắn đầu tiên)
 - Nút 🧠 — bật/tắt suy nghĩ sâu (trả lời lâu hơn nhưng kỹ hơn, Gemini còn tìm thêm nguồn)
 - Nút 📎 / 📷 — đính kèm tệp, ảnh hoặc chụp ảnh để hỏi Miu (Gemini đọc được ảnh và PDF)
 - "help" — xem lại danh sách này
@@ -669,8 +853,14 @@ function thinkingText(){
 }
 
 async function askMiu(userText, atts = []){
-  if (provider === 'deepseek') return askDeepseek(userText, atts);
-  return askGemini(userText, atts);
+  busy = true;
+  busySince = Date.now();
+  try {
+    if (provider === 'deepseek') return await askDeepseek(userText, atts);
+    return await askGemini(userText, atts);
+  } finally {
+    busy = false;
+  }
 }
 
 async function askDeepseek(userText, atts = []){

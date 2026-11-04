@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.googleusercontent.com; connect-src 'self' https://generativelanguage.googleapis.com https://api.deepseek.com; object-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'; worker-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://generativelanguage.googleapis.com https://api.deepseek.com; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'; worker-src 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Miu — Trợ lý AI</title>
@@ -62,33 +62,35 @@
     border-bottom:1px solid rgba(255,255,255,.07);
     flex-shrink:0;
   }
+  .paw{font-size:26px;}
   header h1{font-size:18px; margin:0; font-weight:600;}
   header p{margin:0; font-size:12px; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  header{gap:6px;}
   .header-text{flex:1; min-width:0;}
-  
-  /* Nút trên Header */
-  .gear, .icon-btn{
+  .gear{
     background:none; border:none; color:var(--text-dim); cursor:pointer;
-    font-size:20px; padding:6px; border-radius:50%; transition:0.2s;
+    font-size:20px; padding:6px; border-radius:50%;
   }
-  .gear:hover, .icon-btn:hover{color:var(--text); background:rgba(255,255,255,.06);}
-  .deep-btn.active{color:var(--accent); background:rgba(255,143,163,.22);}
+  .gear:hover{color:var(--text); background:rgba(255,255,255,.06);}
+  .live-btn{
+    background:none; border:none; color:var(--text-dim); cursor:pointer;
+    font-size:18px; padding:6px; border-radius:50%;
+  }
+  .live-btn:hover{color:var(--text); background:rgba(255,255,255,.06);}
   .live-btn.active{color:var(--accent); animation:live-pulse 1.4s ease-in-out infinite;}
   @keyframes live-pulse{
     0%,100%{ box-shadow:0 0 0 0 rgba(255,143,163,.45); }
     50%{ box-shadow:0 0 0 8px rgba(255,143,163,0); }
   }
 
-  /* Settings & Forms */
   #settings{
     display:none; padding:14px 18px; background:var(--bg-soft);
     border-bottom:1px solid rgba(255,255,255,.07); flex-shrink:0;
-    max-height: 65vh; overflow-y: auto;
   }
   #settings.open{display:block;}
-  #settings label{font-size:12px; color:var(--text-dim); display:block; margin:12px 0 6px;}
+  #settings label{font-size:12px; color:var(--text-dim); display:block; margin-bottom:6px;}
   #settings .row{display:flex; gap:8px;}
-  #settings input, #settings select{
+  #settings input{
     flex:1; padding:9px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.12);
     background:var(--bg); color:var(--text); font-size:13px;
   }
@@ -97,36 +99,113 @@
     color:#1b1625; font-weight:600; cursor:pointer; font-size:13px;
   }
   #settings .hint{font-size:11px; color:var(--text-dim); margin-top:8px; line-height:1.5;}
-  #settings .danger{background:var(--danger); color:#fff; margin-top:12px; width:100%;}
-  
-  .acct-box{background:var(--bg); padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,.1); margin-bottom:12px;}
-  .acct-box h3{margin:0 0 8px; font-size:14px;}
-  
-  /* Khu vực Chat */
-  #chat{flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px;}
-  
-  .bubble-wrap{display:flex; flex-direction:column; max-width:80%; align-self:flex-start;}
-  .bubble-wrap.user{align-self:flex-end; align-items:flex-end;}
-  
-  .bubble{
-    padding:10px 14px; border-radius:var(--radius); font-size:14.5px;
-    line-height:1.45; white-space:pre-wrap; word-wrap:break-word; position:relative; width:100%;
+  #settings select{
+    flex:1; padding:9px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.12);
+    background:var(--bg); color:var(--text); font-size:13px;
   }
-  .bubble.miu{background:var(--bubble-miu); color:var(--text); border-bottom-left-radius:4px;}
-  .bubble.user{background:var(--bubble-user); color:#2a1620; border-bottom-right-radius:4px;}
-  .bubble.typing{color:var(--text-dim); font-style:italic;}
-  
-  /* Nút Copy tin nhắn */
-  .msg-actions{display:flex; gap:8px; margin-top:4px; opacity:0; transition:0.2s;}
-  .bubble-wrap:hover .msg-actions{opacity:1;}
-  .copy-btn{background:none; border:none; font-size:11px; color:var(--text-dim); cursor:pointer; padding:2px 4px;}
-  .copy-btn:hover{color:var(--accent);}
+  #settings .row + label{margin-top:12px;}
+  #settings .danger{background:var(--danger); color:#fff; margin-top:12px;}
+  .acct{display:flex; align-items:center; gap:10px; margin-bottom:6px; font-size:14px;}
+  .acct .info{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  #accountBox{margin-bottom:12px;}
 
+  #authScreen{
+    display:none; position:fixed; inset:0; z-index:100; padding:20px;
+    background: radial-gradient(circle at 20% 0%, var(--bg-glow) 0%, var(--bg) 60%);
+    align-items:center; justify-content:center; overflow-y:auto;
+  }
+  #authScreen.show{display:flex;}
+  .auth-card{
+    width:100%; max-width:360px; background:var(--bg-soft); color:var(--text);
+    border-radius:20px; padding:22px 20px; box-shadow:0 8px 32px rgba(0,0,0,.3);
+  }
+  .auth-card h2{margin:0 0 14px; text-align:center; font-size:22px;}
+  .auth-tabs{display:flex; gap:6px; margin-bottom:14px;}
+  .auth-tabs button{
+    flex:1; padding:10px; border-radius:12px; border:none; cursor:pointer;
+    background:var(--bg); color:var(--text-dim); font-size:14px; font-weight:600;
+  }
+  .auth-tabs button.on{background:var(--accent); color:#1b1625;}
+  .auth-card input{
+    display:block; width:100%; margin-bottom:10px; padding:12px 14px; border-radius:12px;
+    border:1px solid rgba(255,255,255,.14); background:var(--bg); color:var(--text); font-size:15px;
+  }
+  .auth-card [hidden]{display:none !important;}
+  #authMsg{min-height:20px; margin-bottom:8px; font-size:13px; color:var(--danger);}
+  #authSubmit{
+    width:100%; padding:12px; border-radius:12px; border:none; cursor:pointer;
+    background:var(--accent); color:#1b1625; font-weight:700; font-size:15px;
+  }
+  #authSubmit:disabled{opacity:.6;}
+  .auth-note{margin:12px 0 0; font-size:11px; color:var(--text-dim); line-height:1.5; text-align:center;}
+
+  .deep-btn{
+    background:none; border:none; color:var(--text-dim); cursor:pointer;
+    font-size:18px; padding:6px; border-radius:50%;
+  }
+  .deep-btn:hover{color:var(--text); background:rgba(255,255,255,.06);}
+  .deep-btn.active{color:var(--accent); background:rgba(255,143,163,.22);}
+
+  #attachBar{
+    display:none; gap:8px; flex-wrap:wrap; padding:8px 14px 0; flex-shrink:0; background:var(--bg);
+  }
+  #attachBar.has{display:flex;}
+  .chip{
+    display:flex; align-items:center; gap:6px; max-width:100%; padding:4px 8px;
+    border-radius:12px; background:var(--bg-soft); color:var(--text); font-size:12px;
+  }
+  .chip img{width:32px; height:32px; object-fit:cover; border-radius:6px;}
+  .chip span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:140px;}
+  .chip button{background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:14px; padding:0 2px;}
   .bubble img.thumb{display:block; max-width:100%; max-height:180px; border-radius:10px; margin-top:6px;}
-  .sources{margin-top:8px; font-size:12px; color:var(--text-dim); line-height:1.7;}
-  .sources a{color:var(--accent);}
+  .bubble .sources{margin-top:8px; font-size:12px; color:var(--text-dim); line-height:1.7;}
+  .bubble .sources a{color:var(--accent);}
+  .bar-btn{
+    background:none; border:none; color:var(--text-dim); cursor:pointer;
+    font-size:20px; width:38px; height:44px; border-radius:50%; flex-shrink:0; padding:0;
+  }
+  .bar-btn:hover{color:var(--text); background:rgba(255,255,255,.06);}
 
-  /* Thanh nhập liệu */
+  #drawerMask{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:40;
+  }
+  #drawerMask.open{display:block;}
+  #drawer{
+    position:fixed; top:0; bottom:0; left:0; width:min(84vw, 330px); z-index:50;
+    background:var(--bg-soft); color:var(--text); display:flex; flex-direction:column;
+    padding:calc(env(safe-area-inset-top, 0px) + 14px) 14px calc(env(safe-area-inset-bottom, 0px) + 14px);
+    transform:translateX(-102%); transition:transform .2s ease; box-shadow:4px 0 24px rgba(0,0,0,.35);
+  }
+  #drawer.open{transform:translateX(0);}
+  .drawer-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; font-size:16px;}
+  .drawer-head button{background:none; border:none; color:var(--text-dim); font-size:18px; cursor:pointer; padding:6px;}
+  .new-chat{
+    width:100%; padding:12px; border-radius:12px; border:none; background:var(--accent);
+    color:#1b1625; font-weight:700; font-size:14px; cursor:pointer; margin-bottom:12px;
+  }
+  #chatList{flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:6px;}
+  .chat-item{display:flex; align-items:center; border-radius:12px; background:var(--bg);}
+  .chat-item.active{outline:2px solid var(--accent);}
+  .chat-title{flex:1; min-width:0; padding:12px; font-size:14px; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .chat-item button{background:none; border:none; font-size:16px; padding:10px; cursor:pointer; color:var(--text-dim);}
+
+  #chat{
+    flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px;
+  }
+  .bubble{
+    max-width:78%; padding:10px 14px; border-radius:var(--radius); font-size:14.5px;
+    line-height:1.45; white-space:pre-wrap; word-wrap:break-word;
+  }
+  .bubble.miu{
+    align-self:flex-start; background:var(--bubble-miu); color:var(--text);
+    border-bottom-left-radius:4px;
+  }
+  .bubble.user{
+    align-self:flex-end; background:var(--bubble-user); color:#2a1620;
+    border-bottom-right-radius:4px;
+  }
+  .bubble.typing{color:var(--text-dim); font-style:italic;}
+
   footer{
     padding:12px 14px; display:flex; gap:8px; border-top:1px solid rgba(255,255,255,.07);
     flex-shrink:0; background:var(--bg);
@@ -140,36 +219,7 @@
     width:44px; height:44px; border-radius:50%; border:none; background:var(--accent);
     color:#1b1625; font-size:18px; cursor:pointer; flex-shrink:0;
   }
-  .bar-btn{
-    background:none; border:none; color:var(--text-dim); cursor:pointer;
-    font-size:20px; width:38px; height:44px; border-radius:50%; flex-shrink:0; padding:0;
-  }
-
-  /* Sidebar (Drawer) */
-  #drawerMask{display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:40;}
-  #drawerMask.open{display:block;}
-  #drawer{
-    position:fixed; top:0; bottom:0; left:0; width:min(84vw, 330px); z-index:50;
-    background:var(--bg-soft); color:var(--text); display:flex; flex-direction:column;
-    padding:calc(env(safe-area-inset-top, 0px) + 14px) 14px calc(env(safe-area-inset-bottom, 0px) + 14px);
-    transform:translateX(-102%); transition:transform .2s ease; box-shadow:4px 0 24px rgba(0,0,0,.35);
-  }
-  #drawer.open{transform:translateX(0);}
-  .drawer-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; font-size:16px;}
-  .drawer-head button{background:none; border:none; color:var(--text-dim); font-size:18px; cursor:pointer; padding:6px;}
-  .new-chat{width:100%; padding:12px; border-radius:12px; border:none; background:var(--accent); color:#1b1625; font-weight:700; font-size:14px; cursor:pointer; margin-bottom:12px;}
-  #chatList{flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:6px;}
-  .chat-item{display:flex; align-items:center; border-radius:12px; background:var(--bg);}
-  .chat-item.active{outline:2px solid var(--accent);}
-  .chat-title{flex:1; min-width:0; padding:12px; font-size:14px; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .chat-item button{background:none; border:none; font-size:16px; padding:10px; cursor:pointer; color:var(--text-dim);}
-
-  #attachBar{display:none; gap:8px; flex-wrap:wrap; padding:8px 14px 0; background:var(--bg); flex-shrink:0;}
-  #attachBar.has{display:flex;}
-  .chip{display:flex; align-items:center; gap:6px; padding:4px 8px; border-radius:12px; background:var(--bg-soft); color:var(--text); font-size:12px;}
-  .chip img{width:32px; height:32px; object-fit:cover; border-radius:6px;}
-  .chip span{max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .chip button{background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:14px; padding:0 2px;}
+  #send:active{transform:scale(0.94);}
 
   #chat::-webkit-scrollbar{width:6px;}
   #chat::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12); border-radius:4px;}
@@ -178,21 +228,19 @@
 <body>
 
 <header>
-  <button class="icon-btn gear" id="menuBtn" title="Danh sách chat">☰</button>
+  <button class="gear" id="menuBtn" title="Danh sách chat">☰</button>
   <div class="header-text">
     <h1>🐾 Miu</h1>
     <p id="chatTitle">Chat mới</p>
   </div>
-  <button class="icon-btn" id="deleteCurrentBtn" title="Xóa đoạn chat này">🗑️</button>
-  <button class="icon-btn gear" id="newBtn" title="Chat mới">＋</button>
-  <button class="icon-btn deep-btn" id="deepBtn" title="Suy nghĩ sâu (trả lời kỹ hơn)">🧠</button>
-  <button class="icon-btn live-btn" id="liveBtn" title="Chế độ live (nói chuyện bằng giọng nói)">🎙️</button>
-  <button class="icon-btn gear" id="gearBtn" title="Cài đặt">⚙</button>
+  <button class="gear" id="newBtn" title="Chat mới">＋</button>
+  <button class="deep-btn" id="deepBtn" title="Suy nghĩ sâu (trả lời lâu hơn nhưng kỹ hơn, có tìm thêm nguồn)">🧠</button>
+  <button class="live-btn" id="liveBtn" title="Chế độ live (nói chuyện bằng giọng nói)">🎙️</button>
+  <button class="gear" id="gearBtn" title="Cài đặt">⚙</button>
 </header>
 
 <div id="settings">
-  <div class="acct-box" id="accountBox"></div>
-  
+  <div id="accountBox"></div>
   <label for="providerSelect">Chọn AI để Miu trò chuyện</label>
   <div class="row">
     <select id="providerSelect">
@@ -200,38 +248,54 @@
       <option value="deepseek">DeepSeek</option>
     </select>
   </div>
-  
-  <label for="apiKeyInput">Gemini API Key (lưu cục bộ)</label>
+  <label for="apiKeyInput">Gemini API Key (lưu trong trình duyệt này, không gửi đi đâu khác)</label>
   <div class="row">
-    <input type="password" id="apiKeyInput" placeholder="Dán Gemini API key..." autocomplete="off" spellcheck="false">
+    <input type="password" id="apiKeyInput" placeholder="Dán Gemini API key vào đây..." autocomplete="off" spellcheck="false">
     <button id="saveKeyBtn">Lưu</button>
   </div>
-  
-  <label for="deepseekKeyInput">DeepSeek API Key (lưu cục bộ)</label>
+  <label for="deepseekKeyInput">DeepSeek API Key (lưu trong trình duyệt này, không gửi đi đâu khác)</label>
   <div class="row">
-    <input type="password" id="deepseekKeyInput" placeholder="Dán DeepSeek API key..." autocomplete="off" spellcheck="false">
+    <input type="password" id="deepseekKeyInput" placeholder="Dán DeepSeek API key vào đây..." autocomplete="off" spellcheck="false">
     <button id="saveDeepseekBtn">Lưu</button>
   </div>
-  
   <div class="hint">
-    Gemini: lấy key tại aistudio.google.com. DeepSeek: lấy key tại platform.deepseek.com. Gõ "help" trong khung chat để xem lệnh offline.
+    Gemini: lấy key tại aistudio.google.com → API Keys. DeepSeek: lấy key tại platform.deepseek.com → API keys (thường cần nạp một ít số dư để dùng).
+    Gõ "help" trong khung chat để xem các lệnh offline (không cần API key).
   </div>
-  
-  <div class="row"><button class="danger" id="clearDataBtn">Xoá toàn bộ dữ liệu App</button></div>
+  <div class="row"><button class="danger" id="clearDataBtn">Xoá chat và API key trên thiết bị này</button></div>
 </div>
 
 <div id="chat"></div>
+
 <div id="attachBar"></div>
 
 <footer>
-  <button class="bar-btn" id="attachBtn" title="Đính kèm tệp/ảnh">📎</button>
+  <button class="bar-btn" id="attachBtn" title="Đính kèm tệp hoặc ảnh">📎</button>
   <button class="bar-btn" id="camBtn" title="Chụp ảnh">📷</button>
   <input id="input" type="text" placeholder="Nhắn gì đó cho Miu..." autocomplete="off">
   <button id="send">➤</button>
 </footer>
-
-<input type="file" id="fileInput" multiple hidden accept="image/*,application/pdf,text/*,.txt,.md,.csv,.json,.js,.py,.html,.css,.xml,.log,.yml,.yaml">
+<input type="file" id="fileInput" multiple hidden
+  accept="image/*,application/pdf,text/*,.txt,.md,.csv,.json,.js,.py,.html,.css,.xml,.log,.yml,.yaml">
 <input type="file" id="camInput" accept="image/*" capture="environment" hidden>
+
+<div id="authScreen">
+  <div class="auth-card">
+    <h2>🐾 Miu</h2>
+    <div class="auth-tabs">
+      <button type="button" id="tabLogin" class="on">Đăng nhập</button>
+      <button type="button" id="tabRegister">Tạo tài khoản</button>
+    </div>
+    <form id="authForm" novalidate>
+      <input id="authUser" type="text" placeholder="Tên tài khoản" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20">
+      <input id="authPass" type="password" placeholder="Mật khẩu" autocomplete="current-password" maxlength="100">
+      <input id="authPass2" type="password" placeholder="Nhập lại mật khẩu" autocomplete="new-password" maxlength="100" hidden>
+      <div id="authMsg" role="alert"></div>
+      <button type="submit" id="authSubmit">Đăng nhập</button>
+    </form>
+    <p class="auth-note">Tài khoản được lưu ngay trên thiết bị này (không gửi lên máy chủ). Mỗi tài khoản có chat và API key riêng.</p>
+  </div>
+</div>
 
 <div id="drawerMask"></div>
 <aside id="drawer">
@@ -241,21 +305,18 @@
 </aside>
 
 <script>
-// ============================================================================
-// 1. DOM ELEMENTS
-// ============================================================================
 const chatEl = document.getElementById('chat');
 const inputEl = document.getElementById('input');
 const sendBtn = document.getElementById('send');
 const gearBtn = document.getElementById('gearBtn');
 const liveBtn = document.getElementById('liveBtn');
-const deepBtn = document.getElementById('deepBtn');
 const settingsEl = document.getElementById('settings');
 const apiKeyInput = document.getElementById('apiKeyInput');
 const saveKeyBtn = document.getElementById('saveKeyBtn');
 const providerSelect = document.getElementById('providerSelect');
 const deepseekKeyInput = document.getElementById('deepseekKeyInput');
 const saveDeepseekBtn = document.getElementById('saveDeepseekBtn');
+const deepBtn = document.getElementById('deepBtn');
 const attachBtn = document.getElementById('attachBtn');
 const camBtn = document.getElementById('camBtn');
 const fileInput = document.getElementById('fileInput');
@@ -263,94 +324,178 @@ const camInput = document.getElementById('camInput');
 const attachBar = document.getElementById('attachBar');
 const menuBtn = document.getElementById('menuBtn');
 const newBtn = document.getElementById('newBtn');
-const deleteCurrentBtn = document.getElementById('deleteCurrentBtn');
 const drawer = document.getElementById('drawer');
 const drawerMask = document.getElementById('drawerMask');
 const drawerClose = document.getElementById('drawerClose');
 const newChatBtn = document.getElementById('newChatBtn');
 const chatListEl = document.getElementById('chatList');
 const chatTitleEl = document.getElementById('chatTitle');
-const accountBox = document.getElementById('accountBox');
 const clearDataBtn = document.getElementById('clearDataBtn');
+const accountBox = document.getElementById('accountBox');
+const authScreen = document.getElementById('authScreen');
+const authForm = document.getElementById('authForm');
+const authUser = document.getElementById('authUser');
+const authPass = document.getElementById('authPass');
+const authPass2 = document.getElementById('authPass2');
+const authMsg = document.getElementById('authMsg');
+const authSubmit = document.getElementById('authSubmit');
+const tabLogin = document.getElementById('tabLogin');
+const tabRegister = document.getElementById('tabRegister');
 
-const GEMINI_MODEL = "gemini-3.5-flash";
-const DEEPSEEK_MODEL = "deepseek-chat";
-const DEEP_HINT = " CHẾ ĐỘ SUY NGHĨ SÂU: Hãy suy nghĩ kỹ trước khi trả lời, trả lời đầy đủ, mạch lạc, có cấu trúc (có thể dài hơn bình thường), ưu tiên thông tin chính xác. Nếu không chắc thì nói rõ.";
-const SYSTEM_PERSONA = "Bạn là Miu, một trợ lý AI cá nhân nói tiếng Việt, thân thiện, ấm áp, hay dùng từ 'mình' để xưng hô và gọi người dùng là 'bạn', không bao giờ gọi người dùng là 'mày'. Trả lời ngắn gọn, tự nhiên, gần gũi, có thể dùng vài icon ✨🐾 cho vui nhưng đừng lạm dụng. Trả lời bằng tiếng Việt có dấu đầy đủ.";
-const GREETING = "Chào bạn! Mình là Miu 🐾 Gõ \"help\" để xem mình làm được gì nhé.";
+const GEMINI_MODEL = "gemini-3.5-flash-lite";
+const DEEPSEEK_MODEL = "deepseek-v4-flash";
+const DEEP_HINT =
+  " CHE DO SUY NGHI SAU: hay suy nghi ky truoc khi tra loi, tra loi day du, mach lac, " +
+  "co cau truc (co the dai hon binh thuong), uu tien thong tin chinh xac va moi nhat, " +
+  "neu khong chac thi noi ro la khong chac.";
+const SYSTEM_PERSONA =
+  "Ban la Miu, mot tro ly AI ca nhan noi tieng Viet, than thien, am ap, " +
+  "hay dung tu 'minh' de xung ho va goi nguoi dung la 'ban', khong bao gio " +
+  "goi nguoi dung la 'may'. Tra loi ngan gon, tu nhien, gan gui, co the " +
+  "dung vai icon ✨🐾 cho vui nhung dung lam dung. Tra loi bang tieng Viet " +
+  "co dau day du.";
 
-// ============================================================================
-// 2. LƯU TRỮ & ĐĂNG NHẬP CỤC BỘ (LOCAL AUTH)
-// ============================================================================
+// ---------------- Luu tru (Store): moi truy cap localStorage deu di qua day ----------------
+// Moi tai khoan co tien to rieng ("miu_u_<ten>_"); du lieu cu (tien to "miu_") se chuyen vao tai khoan dau tien.
 const Store = {
-  prefix: 'miu_guest_',
-  KEYS: ['api_key', 'deepseek_key', 'provider', 'deep', 'chats', 'current'],
+  prefix: 'miu_',
+  KEYS: ['api_key', 'deepseek_key', 'provider', 'deep', 'chats', 'current', 'history'],
   setPrefix(p){ this.prefix = p; },
   getRaw(full){ try { return localStorage.getItem(full); } catch (e) { return null; } },
   setRaw(full, v){ try { localStorage.setItem(full, String(v)); return true; } catch (e) { return false; } },
   removeRaw(full){ try { localStorage.removeItem(full); } catch (e) {} },
   getRawJSON(full, fb){ const v = this.getRaw(full); if (v === null) return fb; try { return JSON.parse(v); } catch (e) { return fb; } },
   setRawJSON(full, obj){ return this.setRaw(full, JSON.stringify(obj)); },
-  get(name, fb = null){ const v = this.getRaw(this.prefix + name); return v === null ? fb : v; },
-  set(name, v){ return this.setRaw(this.prefix + name, v); },
-  remove(name){ this.removeRaw(this.prefix + name); },
-  getJSON(name, fb){ return this.getRawJSON(this.prefix + name, fb); },
-  setJSON(name, obj){ return this.setRawJSON(this.prefix + name, obj); },
+  // Chua dang nhap thi khoa: khong doc, khong ghi du lieu cua ai ca
+  locked: false,
+  get(name, fb = null){ if (this.locked) return fb; const v = this.getRaw(this.prefix + name); return v === null ? fb : v; },
+  set(name, v){ return this.locked ? false : this.setRaw(this.prefix + name, v); },
+  remove(name){ if (!this.locked) this.removeRaw(this.prefix + name); },
+  getJSON(name, fb){ return this.locked ? fb : this.getRawJSON(this.prefix + name, fb); },
+  setJSON(name, obj){ return this.locked ? false : this.setRawJSON(this.prefix + name, obj); },
   clearAll(){ this.KEYS.forEach(k => this.remove(k)); },
 };
 
-const Auth = {
-  currentUser: null,
-  init() {
-    this.currentUser = Store.getRawJSON('miu_local_auth', null);
-    if (this.currentUser && this.currentUser.username) {
-      Store.setPrefix('miu_user_' + this.currentUser.username + '_');
+// ---------------- Tai khoan (ten + mat khau, luu tren thiet bi nay) ----------------
+// Mat khau khong bao gio duoc luu: chi luu muoi + ket qua bam PBKDF2-SHA256 (150.000 vong).
+const PBKDF2_ITER = 150000;
+const MAX_FAILS = 5;
+const LOCK_MS = 30000;
+const WRONG_MSG = "Sai tên hoặc mật khẩu.";
+const b64enc = bytes => btoa(String.fromCharCode(...bytes));
+const b64dec = str => Uint8Array.from(atob(str), c => c.charCodeAt(0));
+async function pbkdf2(password, salt, iter){
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  return new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: iter }, key, 256));
+}
+function sameBytes(a, b){
+  if (a.length !== b.length) return false;
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a[i] ^ b[i];
+  return d === 0;
+}
+const Account = {
+  user: null,          // ten dang nhap da chuan hoa (chu thuong)
+  displayName: '',
+  USERS: 'miu_users', SESSION: 'miu_session', LOCK: 'miu_lock',
+  norm(name){ return String(name).trim().toLowerCase(); },
+  validName(name){ return /^[a-z0-9_.-]{3,20}$/i.test(String(name).trim()); },
+  users(){ return Store.getRawJSON(this.USERS, {}); },
+  prefixFor(n){ return 'miu_u_' + n + '_'; },
+  init(){
+    const n = Store.getRaw(this.SESSION);
+    const u = n ? this.users()[n] : null;
+    if (u){
+      this.user = n;
+      this.displayName = u.name || n;
+      Store.setPrefix(this.prefixFor(n));
+      Store.locked = false;
     } else {
-      Store.setPrefix('miu_guest_');
+      this.user = null;
+      this.displayName = '';
+      Store.locked = true;
     }
   },
-  login(username, pin) {
-    if (!username || !pin) return "Vui lòng nhập đủ Tên và Mã PIN.";
-    const users = Store.getRawJSON('miu_all_users', {});
-    if (users[username] && users[username] !== pin) return "Mã PIN không đúng!";
-    users[username] = pin;
-    Store.setRawJSON('miu_all_users', users);
-    Store.setRawJSON('miu_local_auth', { username: username });
+  // Lan dau tao tai khoan: chuyen chat va API key cu (chua thuoc ai) vao tai khoan do
+  adoptOldData(n){
+    Store.KEYS.forEach(k => {
+      const v = Store.getRaw('miu_' + k);
+      if (v !== null){ Store.setRaw(this.prefixFor(n) + k, v); Store.removeRaw('miu_' + k); }
+    });
+  },
+  async register(name, pass, pass2){
+    if (!this.validName(name)) return { ok: false, msg: "Tên tài khoản phải dài 3-20 ký tự, chỉ gồm chữ, số, dấu _ - hoặc dấu chấm." };
+    if (String(pass).length < 6) return { ok: false, msg: "Mật khẩu phải có ít nhất 6 ký tự." };
+    if (pass !== pass2) return { ok: false, msg: "Mật khẩu nhập lại không khớp." };
+    if (!(window.crypto && crypto.subtle)) return { ok: false, msg: "Trình duyệt này không hỗ trợ tạo tài khoản an toàn (cần mở bằng https)." };
+    const n = this.norm(name);
+    const users = this.users();
+    if (users[n]) return { ok: false, msg: "Tên tài khoản đã tồn tại, bạn chọn tên khác nhé." };
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const hash = await pbkdf2(pass, salt, PBKDF2_ITER);
+    const first = Object.keys(users).length === 0;
+    users[n] = { name: String(name).trim(), salt: b64enc(salt), hash: b64enc(hash), iter: PBKDF2_ITER, created: Date.now() };
+    if (!Store.setRawJSON(this.USERS, users)) return { ok: false, msg: "Không lưu được tài khoản (bộ nhớ trình duyệt đầy hoặc bị chặn)." };
+    if (first) this.adoptOldData(n);
+    Store.setRaw(this.SESSION, n);
+    location.reload();
+    return { ok: true };
+  },
+  async login(name, pass){
+    const lock = Store.getRawJSON(this.LOCK, { fails: 0, until: 0 });
+    if (lock.until > Date.now()){
+      return { ok: false, msg: `Bạn nhập sai quá nhiều lần, thử lại sau ${Math.ceil((lock.until - Date.now()) / 1000)} giây.` };
+    }
+    if (!(window.crypto && crypto.subtle)) return { ok: false, msg: "Trình duyệt này không hỗ trợ đăng nhập an toàn (cần mở bằng https)." };
+    const n = this.norm(name);
+    const u = this.users()[n];
+    let good = false;
+    if (u){
+      const h = await pbkdf2(String(pass), b64dec(u.salt), u.iter || PBKDF2_ITER);
+      good = sameBytes(h, b64dec(u.hash));
+    } else {
+      await pbkdf2(String(pass), new Uint8Array(16), PBKDF2_ITER); // tranh lo "ten co ton tai khong" qua thoi gian xu ly
+    }
+    if (!good){
+      lock.fails = (lock.fails || 0) + 1;
+      if (lock.fails >= MAX_FAILS){ lock.until = Date.now() + LOCK_MS; lock.fails = 0; }
+      Store.setRawJSON(this.LOCK, lock);
+      return { ok: false, msg: WRONG_MSG };
+    }
+    Store.removeRaw(this.LOCK);
+    Store.setRaw(this.SESSION, n);
+    location.reload();
+    return { ok: true };
+  },
+  logout(){
+    Store.removeRaw(this.SESSION);
     location.reload();
   },
-  logout() {
-    Store.removeRaw('miu_local_auth');
-    location.reload();
-  }
 };
+Account.init();
 
-Auth.init();
-
-// ============================================================================
-// 3. QUẢN LÝ CHAT & GIAO DIỆN CHAT
-// ============================================================================
+const GREETING = "Chào bạn! Mình là Miu 🐾 Gõ \"help\" để xem mình làm được gì nhé.";
 const MAX_CHATS = 50;
 let chats = {};
 let currentId = null;
 let history = [];
 let busy = false;
 let busySince = 0;
-const isBusy = () => busy && (Date.now() - busySince) < 120000;
+function isBusy(){ return busy && (Date.now() - busySince) < 120000; } // tu mo khoa sau 2 phut neu bi treo
 let liveActive = false;
 let waitingForReply = false;
 let recognition = null;
-let attachments = [];
-
 let apiKey = Store.get('api_key', '');
-let deepseekKey = Store.get('deepseek_key', '');
-let deepMode = Store.get('deep') === '1';
-let provider = Store.get('provider', 'gemini');
-
 apiKeyInput.value = apiKey;
-deepseekKeyInput.value = deepseekKey;
-providerSelect.value = provider;
+let deepMode = Store.get('deep') === '1';
 deepBtn.classList.toggle('active', deepMode);
+let attachments = [];
+let provider = Store.get('provider', 'gemini');
+let deepseekKey = Store.get('deepseek_key', '');
+providerSelect.value = provider;
+deepseekKeyInput.value = deepseekKey;
 
+// ---------------- Nhieu cuoc tro chuyen (chat) ----------------
 function makeTitle(text){
   let t = String(text).split('\n')[0].replace(/^📎\s*/, '').trim();
   if (!t) t = 'Chat mới';
@@ -373,10 +518,20 @@ function loadChats(){
   if (saved && Object.keys(saved).length){
     chats = saved;
     currentId = Store.get('current');
-    if (!chats[currentId]) currentId = Object.values(chats).sort((a, b) => b.updated - a.updated)[0].id;
+    if (!chats[currentId]){
+      currentId = Object.values(chats).sort((a, b) => b.updated - a.updated)[0].id;
+    }
   } else {
+    // Lan dau co tinh nang nhieu chat: chuyen lich su cu thanh chat dau tien
     const c = newChatObj();
-    chats[c.id] = c; currentId = c.id;
+    const old = Store.getJSON('history', []);
+    if (old.length){
+      c.history = old;
+      const u = old.find(m => m.who === 'user');
+      if (u) c.title = makeTitle(u.text);
+    }
+    chats[c.id] = c;
+    currentId = c.id;
   }
   history = chats[currentId].history;
   persistChats();
@@ -390,34 +545,11 @@ function updateTitleUI(){
 }
 
 function addBubble(text, who, store = true){
-  const wrap = document.createElement('div');
-  wrap.className = 'bubble-wrap ' + who;
-  
   const div = document.createElement('div');
   div.className = 'bubble ' + who;
   div.textContent = text;
-  wrap.appendChild(div);
-
-  // Nút Copy cho tin nhắn của Miu
-  if (who === 'miu' && !text.includes("đang gõ") && !text.includes("suy nghĩ sâu")) {
-    const actions = document.createElement('div');
-    actions.className = 'msg-actions';
-    const copyBtn = document.createElement('button');
-    copyBtn.className = 'copy-btn';
-    copyBtn.textContent = '📋 Copy';
-    copyBtn.onclick = () => {
-      navigator.clipboard.writeText(text).then(() => {
-        copyBtn.textContent = '✅ Đã chép';
-        setTimeout(() => copyBtn.textContent = '📋 Copy', 2000);
-      });
-    };
-    actions.appendChild(copyBtn);
-    wrap.appendChild(actions);
-  }
-
-  chatEl.appendChild(wrap);
+  chatEl.appendChild(div);
   chatEl.scrollTop = chatEl.scrollHeight;
-
   if (store){
     history.push({who, text});
     const cur = chats[currentId];
@@ -427,17 +559,16 @@ function addBubble(text, who, store = true){
     }
     saveHistory();
   }
-  
-  if (who === 'miu' && liveActive && !text.includes("đang gõ") && !text.includes("suy nghĩ sâu")){
+  if (who === 'miu' && liveActive){
     waitingForReply = false;
     speakText(text);
   }
-  return wrap;
+  return div;
 }
 
 function renderChat(){
   const was = liveActive;
-  liveActive = false; 
+  liveActive = false; // khong doc to lai tin nhan cu
   chatEl.textContent = '';
   history.forEach(m => addBubble(m.text, m.who, false));
   liveActive = was;
@@ -456,127 +587,151 @@ function renderChatList(){
     t.onclick = () => switchChat(c.id);
     const d = document.createElement('button');
     d.textContent = '🗑';
+    d.title = 'Xoá chat này';
     d.onclick = (e) => { e.stopPropagation(); deleteChat(c.id); };
-    row.appendChild(t); row.appendChild(d); chatListEl.appendChild(row);
+    row.appendChild(t);
+    row.appendChild(d);
+    chatListEl.appendChild(row);
   });
 }
-function openDrawer(){ renderChatList(); drawer.classList.add('open'); drawerMask.classList.add('open'); }
-function closeDrawer(){ drawer.classList.remove('open'); drawerMask.classList.remove('open'); }
-function warnBusy(){ closeDrawer(); addBubble("Miu đang trả lời, bạn chờ xíu rồi chuyển chat nhé.", "miu", false); }
+function openDrawer(){
+  renderChatList();
+  drawer.classList.add('open');
+  drawerMask.classList.add('open');
+}
+function closeDrawer(){
+  drawer.classList.remove('open');
+  drawerMask.classList.remove('open');
+}
+function warnBusy(){
+  closeDrawer();
+  addBubble("Miu đang trả lời, bạn chờ xíu rồi chuyển chat nhé.", "miu", false);
+}
 function switchChat(id){
   if (id === currentId){ closeDrawer(); return; }
   if (isBusy()){ warnBusy(); return; }
   currentId = id;
   history = chats[id].history;
-  persistChats(); renderChat(); closeDrawer();
+  persistChats();
+  renderChat();
+  closeDrawer();
 }
 function newChat(){
   if (isBusy()){ warnBusy(); return; }
   closeDrawer();
   const cur = chats[currentId];
-  if (cur && !cur.history.some(m => m.who === 'user')) return;
+  if (cur && !cur.history.some(m => m.who === 'user')) return; // chat hien tai con trong, dung lai
   const oldest = Object.values(chats).filter(c => c.id !== currentId).sort((a, b) => a.updated - b.updated);
   while (Object.keys(chats).length >= MAX_CHATS && oldest.length) delete chats[oldest.shift().id];
   const c = newChatObj();
-  chats[c.id] = c; currentId = c.id; history = c.history; persistChats(); renderChat();
+  chats[c.id] = c;
+  currentId = c.id;
+  history = c.history;
+  persistChats();
+  renderChat();
 }
 function deleteChat(id){
   if (isBusy()){ warnBusy(); return; }
   if (!confirm('Xoá cuộc trò chuyện này?')) return;
   delete chats[id];
-  if (!Object.keys(chats).length){ const c = newChatObj(); chats[c.id] = c; }
+  if (!Object.keys(chats).length){
+    const c = newChatObj();
+    chats[c.id] = c;
+  }
   if (!chats[currentId]){
     currentId = Object.values(chats).sort((a, b) => b.updated - a.updated)[0].id;
-    history = chats[currentId].history; renderChat();
+    history = chats[currentId].history;
+    renderChat();
   }
-  persistChats(); renderChatList();
+  persistChats();
+  renderChatList();
 }
+menuBtn.onclick = openDrawer;
+drawerClose.onclick = closeDrawer;
+drawerMask.onclick = closeDrawer;
+newChatBtn.onclick = newChat;
+newBtn.onclick = newChat;
 
-// Sự kiện điều hướng
-menuBtn.onclick = openDrawer; drawerClose.onclick = closeDrawer; drawerMask.onclick = closeDrawer;
-newChatBtn.onclick = newChat; newBtn.onclick = newChat;
-deleteCurrentBtn.onclick = () => {
-  if(confirm("Xóa toàn bộ tin nhắn trong đoạn chat này?")) {
-    chats[currentId].history = [{who:'miu', text: GREETING}];
-    history = chats[currentId].history; renderChat(); saveHistory();
-  }
-};
-
-// ============================================================================
-// 4. RENDER TÀI KHOẢN (LOGIN BOX)
-// ============================================================================
-function renderAccount(){
-  accountBox.textContent = '';
-  const u = Auth.currentUser;
-  
-  if (u) {
-    const row = document.createElement('div');
-    row.innerHTML = `<h3>Tài khoản: ${u.username}</h3>`;
-    const out = document.createElement('button');
-    out.textContent = 'Đăng xuất';
-    out.style = "background:var(--danger); color:white; padding:6px 12px; font-size:12px; border-radius:8px; border:none; cursor:pointer;";
-    out.onclick = () => Auth.logout();
-    row.appendChild(out);
-    accountBox.appendChild(row);
-    
-    const note = document.createElement('div');
-    note.className = 'hint';
-    note.textContent = 'Dữ liệu chat và API key đang lưu riêng cho tài khoản này.';
-    accountBox.appendChild(note);
-  } else {
-    accountBox.innerHTML = `<h3>Đăng nhập / Tạo tài khoản</h3>
-      <div class="hint">Nhập tên và mã PIN (4-6 số) để lưu trữ dữ liệu riêng biệt.</div>
-      <div class="row" style="margin-top:8px;">
-        <input type="text" id="loginName" placeholder="Tên của bạn..." maxlength="15">
-        <input type="password" id="loginPin" placeholder="Mã PIN..." maxlength="6">
-      </div>
-      <div class="row" style="margin-top:8px;">
-        <button id="loginBtn" style="width:100%;">Vào App</button>
-      </div>
-    `;
-    document.getElementById('loginBtn').onclick = () => {
-      const name = document.getElementById('loginName').value.trim();
-      const pin = document.getElementById('loginPin').value.trim();
-      const err = Auth.login(name, pin);
-      if (err) alert(err);
-    };
-  }
-}
-
-// Cài đặt thay đổi
-gearBtn.onclick = () => settingsEl.classList.toggle('open');
-clearDataBtn.onclick = () => {
-  if (!confirm('Xoá toàn bộ chat và API key của tài khoản hiện tại trên thiết bị này?')) return;
-  Store.clearAll(); location.reload();
-};
-saveKeyBtn.onclick = () => {
-  apiKey = apiKeyInput.value.trim(); Store.set('api_key', apiKey);
-  settingsEl.classList.remove('open');
-  addBubble(apiKey ? "Đã lưu API key Gemini!" : "Đã xoá API key Gemini.", "miu", false);
-};
-saveDeepseekBtn.onclick = () => {
-  deepseekKey = deepseekKeyInput.value.trim(); Store.set('deepseek_key', deepseekKey);
-  settingsEl.classList.remove('open');
-  addBubble(deepseekKey ? "Đã lưu API key DeepSeek!" : "Đã xoá API key DeepSeek.", "miu", false);
-};
-providerSelect.onchange = () => {
-  provider = providerSelect.value; Store.set('provider', provider);
-  addBubble(provider === 'deepseek' ? "Đã chuyển sang DeepSeek!" : "Đã chuyển sang Gemini!", "miu", false);
-};
-deepBtn.onclick = () => {
-  deepMode = !deepMode; Store.set('deep', deepMode ? '1' : '0'); deepBtn.classList.toggle('active', deepMode);
-  addBubble(deepMode ? "Đã bật suy nghĩ sâu 🧠." : "Đã tắt suy nghĩ sâu.", "miu", false);
-};
-
-// Khởi tạo giao diện ban đầu
-renderAccount();
 loadChats();
 renderChat();
-</script>
-<script>
-// ============================================================================
-// 5. CÁC LỆNH OFFLINE & GAME
-// ============================================================================
+
+function renderAccount(){
+  accountBox.textContent = '';
+  if (!Account.user) return;
+  const row = document.createElement('div');
+  row.className = 'acct';
+  const info = document.createElement('div');
+  info.className = 'info';
+  info.textContent = '👤 ' + Account.displayName;
+  row.appendChild(info);
+  const out = document.createElement('button');
+  out.textContent = 'Đăng xuất';
+  out.onclick = () => Account.logout();
+  row.appendChild(out);
+  accountBox.appendChild(row);
+  const note = document.createElement('div');
+  note.className = 'hint';
+  note.textContent = 'Chat và API key lưu riêng cho tài khoản này, ngay trên thiết bị này.';
+  accountBox.appendChild(note);
+}
+renderAccount();
+
+// ----- Man hinh dang nhap / tao tai khoan -----
+let authMode = 'login';
+function setAuthMode(mode){
+  authMode = mode;
+  tabLogin.classList.toggle('on', mode === 'login');
+  tabRegister.classList.toggle('on', mode === 'register');
+  authPass2.hidden = mode !== 'register';
+  authPass.autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+  authSubmit.textContent = mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản';
+  authMsg.textContent = '';
+}
+tabLogin.onclick = () => setAuthMode('login');
+tabRegister.onclick = () => setAuthMode('register');
+authForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  authSubmit.disabled = true;
+  authMsg.textContent = '';
+  try {
+    const r = authMode === 'login'
+      ? await Account.login(authUser.value, authPass.value)
+      : await Account.register(authUser.value, authPass.value, authPass2.value);
+    if (!r.ok) authMsg.textContent = r.msg;
+  } catch (err) {
+    authMsg.textContent = 'Có lỗi xảy ra, bạn thử lại nhé.';
+  }
+  authSubmit.disabled = false;
+});
+if (!Account.user) authScreen.classList.add('show');
+
+clearDataBtn.onclick = () => {
+  if (!confirm('Xoá toàn bộ chat và API key của tài khoản này trên thiết bị này?')) return;
+  Store.clearAll();
+  location.reload();
+};
+
+gearBtn.onclick = () => settingsEl.classList.toggle('open');
+saveKeyBtn.onclick = () => {
+  apiKey = apiKeyInput.value.trim();
+  Store.set('api_key', apiKey);
+  settingsEl.classList.remove('open');
+  addBubble(apiKey ? "Đã lưu API key! Giờ mình trò chuyện tự do được rồi." : "Đã xoá API key.", "miu", false);
+};
+
+providerSelect.onchange = () => {
+  provider = providerSelect.value;
+  Store.set('provider', provider);
+  addBubble(provider === 'deepseek' ? "Đã chuyển sang DeepSeek!" : "Đã chuyển sang Gemini!", "miu", false);
+};
+saveDeepseekBtn.onclick = () => {
+  deepseekKey = deepseekKeyInput.value.trim();
+  Store.set('deepseek_key', deepseekKey);
+  settingsEl.classList.remove('open');
+  addBubble(deepseekKey ? "Đã lưu DeepSeek API key! Nhớ chọn DeepSeek ở mục \"Chọn AI\" nếu muốn dùng nhé." : "Đã xoá DeepSeek API key.", "miu", false);
+};
+
+// ---------------- Cac lenh offline (khong can API) ----------------
 function generatePassword(length){
   length = Math.max(6, Math.min(length || 12, 64));
   const lower = "abcdefghijklmnopqrstuvwxyz";
@@ -587,6 +742,7 @@ function generatePassword(length){
   function pick(set){ return set[crypto.getRandomValues(new Uint32Array(1))[0] % set.length]; }
   let pass = [pick(lower), pick(upper), pick(digits)];
   while (pass.length < length) pass.push(pick(all));
+  // xao thu tu cho ngau nhien
   for (let i = pass.length - 1; i > 0; i--){
     const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
     [pass[i], pass[j]] = [pass[j], pass[i]];
@@ -604,17 +760,34 @@ function startCountdown(seconds){
     addBubble(String(n), "miu");
     n--;
     if (n < 0){
-      clearInterval(countdownTimer); countdownTimer = null;
+      clearInterval(countdownTimer);
+      countdownTimer = null;
       addBubble("Hết giờ rồi! ⏰", "miu");
     }
   }, 1000);
 }
 
+const HELP_TEXT =
+`Mình làm được (offline, không cần API key):
+- "tao mat khau [so ky tu]" — tạo mật khẩu ngẫu nhiên
+- "dem nguoc [so giay]" — đếm ngược
+- "game 4" (hoặc "doan con vat") — chơi đoán con vật qua gợi ý
+- "game 5" (hoặc "noi tu") — chơi nối từ
+- "nhac uong nuoc [so phut]" — bật nhắc uống nước định kỳ (mặc định 60 phút)
+- "tat nhac uong nuoc" — tắt nhắc uống nước
+- ⚙ — xem tên tài khoản và Đăng xuất (mỗi tài khoản có chat riêng)
+- Nút ☰ — xem danh sách chat, nút ＋ — tạo chat mới (mỗi chat tự đặt tên theo tin nhắn đầu tiên)
+- Nút 🧠 — bật/tắt suy nghĩ sâu (trả lời lâu hơn nhưng kỹ hơn, Gemini còn tìm thêm nguồn)
+- Nút 📎 / 📷 — đính kèm tệp, ảnh hoặc chụp ảnh để hỏi Miu (Gemini đọc được ảnh và PDF)
+- "help" — xem lại danh sách này
+
+Nếu đã lưu API key (Gemini hoặc DeepSeek, nút ⚙ góc trên), bạn có thể trò chuyện tự do với mình về bất cứ điều gì!`;
+
 function stripDiacritics(str){
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
 }
 
-// --- Game 4: Đoán con vật ---
+// ---------------- Game 4: Doan con vat ----------------
 const ANIMALS = [
   {ten:"cho", goiY:["La ban than lau doi nhat cua con nguoi.","Hay vay duoi khi vui, biet giu nha.","Keu 'gau gau'."]},
   {ten:"meo", goiY:["Thich nam sap va rinh chuot.","Rat sach se, hay tu liem long.","Keu 'meo meo'."]},
@@ -634,6 +807,7 @@ function animalStart(){
   animalGame = { active:true, answer:animal.ten, hints:animal.goiY, hintIndex:1, attempts:0 };
   addBubble(`Mình đang nghĩ đến 1 con vật, đoán xem là con gì nhé!\nGợi ý 1: ${animalGame.hints[0]}\n(Gõ "thoat game 4" để dừng chơi)`, "miu");
 }
+
 function animalGuess(raw){
   animalGame.attempts++;
   const guessNorm = stripDiacritics(raw.toLowerCase().trim());
@@ -652,6 +826,7 @@ function animalGuess(raw){
   addBubble(`Hết gợi ý rồi, đáp án là con ${animalGame.answer}.`, "miu");
   animalGame = { active:false, answer:null, hints:[], hintIndex:0, attempts:0 };
 }
+
 function animalStop(){
   if (!animalGame.active){ addBubble("Đâu có đang chơi đoán con vật nào cả.", "miu"); return; }
   const answer = animalGame.answer;
@@ -659,8 +834,17 @@ function animalStop(){
   addBubble(`Đã dừng chơi. Đáp án là con ${answer}.`, "miu");
 }
 
-// --- Game 5: Nối từ ---
-const WORDCHAIN_WORDS = ["an", "anh", "ao", "ba", "banh", "bo", "buom", "ca", "canh", "cam", "cao", "cho", "com", "da", "dau", "de", "dua", "em", "en", "ga", "gao", "gau", "gio", "ho", "hoa", "hoc", "im", "it", "keo", "khe", "khoa", "la", "lop", "lua", "meo", "mit", "mua", "nai", "nam", "nang", "nem", "no", "oc", "oi", "ong", "phao", "pho", "phu", "quat", "qua", "quen", "ran", "rau", "re", "sao", "sen", "sung", "suoi", "tam", "tao", "tho", "tom", "tra", "tre", "tu", "uot", "uyen", "vang", "vit", "vo", "xanh", "xe", "xoi", "y", "yeu"];
+// ---------------- Game 5: Noi tu ----------------
+const WORDCHAIN_WORDS = [
+  "an", "anh", "ao", "ba", "banh", "bo", "buom", "ca", "canh", "cam",
+  "cao", "cho", "com", "da", "dau", "de", "dua", "em", "en", "ga",
+  "gao", "gau", "gio", "ho", "hoa", "hoc", "im", "it", "keo", "khe",
+  "khoa", "la", "lop", "lua", "meo", "mit", "mua", "nai", "nam", "nang",
+  "nem", "no", "oc", "oi", "ong", "phao", "pho", "phu", "quat", "qua",
+  "quen", "ran", "rau", "re", "sao", "sen", "sung", "suoi", "tam", "tao",
+  "tho", "tom", "tra", "tre", "tu", "uot", "uyen", "vang", "vit", "vo",
+  "xanh", "xe", "xoi", "y", "yeu",
+];
 let wordChainGame = { active:false, used:new Set(), lastLetter:null };
 
 function wcFindContinuation(letter){
@@ -671,38 +855,50 @@ function wcFindContinuation(letter){
   if (!candidates.length) return null;
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
+
 function wordchainStart(){
   const first = WORDCHAIN_WORDS[Math.floor(Math.random() * WORDCHAIN_WORDS.length)];
   const norm = stripDiacritics(first).toLowerCase();
   wordChainGame = { active:true, used:new Set([norm]), lastLetter: norm.slice(-1) };
   addBubble(`Chơi nối từ nhé! Mình đi trước: "${first}".\nBạn nói 1 từ (không dấu cách) bắt đầu bằng chữ "${wordChainGame.lastLetter}" đi! (Gõ "thoat game 5" để dừng chơi)`, "miu");
 }
+
 function wordchainGuess(raw){
   const word = raw.trim();
-  if (!word || word.includes(' ')){ addBubble(`Bạn gõ 1 từ duy nhất thôi nhé, bắt đầu bằng chữ "${wordChainGame.lastLetter}".`, "miu"); return; }
+  if (!word || word.includes(' ')){
+    addBubble(`Bạn gõ 1 từ duy nhất thôi nhé (không có dấu cách), bắt đầu bằng chữ "${wordChainGame.lastLetter}".`, "miu");
+    return;
+  }
   const norm = stripDiacritics(word.toLowerCase());
   if (norm[0] !== wordChainGame.lastLetter){
-    wordChainGame.active = false; addBubble(`Từ phải bắt đầu bằng chữ "${wordChainGame.lastLetter}" chứ! Bạn thua rồi, gõ "game 5" để chơi lại nhé.`, "miu"); return;
+    wordChainGame.active = false;
+    addBubble(`Từ phải bắt đầu bằng chữ "${wordChainGame.lastLetter}" chứ! Bạn thua rồi, gõ "game 5" để chơi lại nhé.`, "miu");
+    return;
   }
   if (wordChainGame.used.has(norm)){
-    wordChainGame.active = false; addBubble(`Từ "${word}" dùng rồi nè, bạn thua rồi! Gõ "game 5" để chơi lại.`, "miu"); return;
+    wordChainGame.active = false;
+    addBubble(`Từ "${word}" dùng rồi nè, bạn thua rồi! Gõ "game 5" để chơi lại.`, "miu");
+    return;
   }
   wordChainGame.used.add(norm);
   const nextLetter = norm.slice(-1);
   const continuation = wcFindContinuation(nextLetter);
   if (!continuation){
-    wordChainGame.active = false; addBubble(`Mình chịu thua, không nghĩ ra từ nào bắt đầu bằng chữ "${nextLetter}" nữa! Bạn thắng!`, "miu"); return;
+    wordChainGame.active = false;
+    addBubble(`Mình chịu thua, không nghĩ ra từ nào bắt đầu bằng chữ "${nextLetter}" nữa! Bạn thắng!`, "miu");
+    return;
   }
   wordChainGame.used.add(stripDiacritics(continuation).toLowerCase());
   wordChainGame.lastLetter = stripDiacritics(continuation).toLowerCase().slice(-1);
   addBubble(`"${continuation}". Tới lượt bạn, từ bắt đầu bằng chữ "${wordChainGame.lastLetter}" nhé!`, "miu");
 }
+
 function wordchainStop(){
   if (!wordChainGame.active){ addBubble("Đâu có đang chơi nối từ đâu.", "miu"); return; }
-  wordChainGame.active = false; addBubble("Đã dừng chơi nối từ.", "miu");
+  wordChainGame.active = false;
+  addBubble("Đã dừng chơi nối từ.", "miu");
 }
 
-// --- Nhắc uống nước ---
 let waterTimer = null;
 function startWaterReminder(text){
   const match = text.match(/\d+/);
@@ -710,31 +906,26 @@ function startWaterReminder(text){
   minutes = Math.max(1, Math.min(minutes, 180));
   if (waterTimer) clearInterval(waterTimer);
   addBubble(`Đã bật nhắc uống nước mỗi ${minutes} phút! Gõ "tat nhac uong nuoc" để tắt.`, "miu");
-  waterTimer = setInterval(() => { addBubble("Uống nước đi bạn ơi! 💧 Giữ sức khỏe nhé.", "miu"); }, minutes * 60 * 1000);
+  waterTimer = setInterval(() => {
+    addBubble("Uống nước đi bạn ơi! 💧 Giữ sức khỏe nhé.", "miu");
+  }, minutes * 60 * 1000);
 }
 function stopWaterReminder(){
   if (!waterTimer){ addBubble("Hiện tại chưa bật nhắc uống nước mà.", "miu"); return; }
-  clearInterval(waterTimer); waterTimer = null; addBubble("Đã tắt nhắc uống nước.", "miu");
+  clearInterval(waterTimer);
+  waterTimer = null;
+  addBubble("Đã tắt nhắc uống nước.", "miu");
 }
 
-// --- Xử lý lệnh ---
+// ---------------- Lenh offline: moi lenh la {match, run}, xet theo thu tu ----------------
 const has = (t, ...keys) => keys.some(k => t.includes(k));
 const firstNumber = (t, fallback) => { const m = t.match(/\d+/); return m ? parseInt(m[0], 10) : fallback; };
-
-const HELP_TEXT = `Mình làm được (offline):
-- "tao mat khau [so ky tu]"
-- "dem nguoc [so giay]"
-- "game 4" (doan con vat)
-- "game 5" (noi tu)
-- "nhac uong nuoc [so phut]"
-- "tat nhac uong nuoc"
-- Nút ⚙ — Đăng nhập/Tạo tài khoản để lưu dữ liệu riêng.
-- Gõ "help" để xem lại.`;
-
 const COMMANDS = [
   { match: t => t === 'help' || t === 'tro giup', run: () => addBubble(HELP_TEXT, "miu") },
-  { match: t => has(t, 'tao mat khau', 'sinh mat khau'), run: t => { const len = firstNumber(t, 12); addBubble(`Mật khẩu ${len} ký tự của bạn:\n${generatePassword(len)}`, "miu"); } },
+  { match: t => has(t, 'tao mat khau', 'sinh mat khau'),
+    run: t => { const len = firstNumber(t, 12); addBubble(`Mật khẩu ${len} ký tự của bạn:\n${generatePassword(len)}`, "miu"); } },
   { match: t => has(t, 'dem nguoc'), run: t => startCountdown(firstNumber(t, 10)) },
+  // Lenh TAT dat truoc lenh BAT vi "tat nhac uong nuoc" cung chua chuoi con "nhac uong nuoc"
   { match: t => has(t, 'tat nhac uong nuoc', 'dung nhac uong nuoc', 'thoat nhac uong nuoc'), run: () => stopWaterReminder() },
   { match: t => has(t, 'nhac uong nuoc', 'bat nhac uong nuoc'), run: t => startWaterReminder(t) },
   { match: t => has(t, 'thoat game 4', 'dung game 4', 'huy game 4'), run: () => animalStop() },
@@ -746,18 +937,31 @@ function handleLocalCommand(raw){
   const text = stripDiacritics(raw.toLowerCase()).trim();
   const cmd = COMMANDS.find(c => c.match(text));
   if (!cmd) return false;
-  cmd.run(text); return true;
+  cmd.run(text);
+  return true;
 }
 
-// ============================================================================
-// 6. ĐÍNH KÈM TỆP / ẢNH
-// ============================================================================
+// ---------------- Dinh kem tep / anh / chup anh ----------------
 const MAX_ATTACH = 4;
 const TEXT_EXTS = ['txt','md','csv','json','js','ts','py','html','css','xml','log','yml','yaml','java','c','cpp','h','sh','sql','ini','tsv'];
 
-function readAsBase64(file){ return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(file); }); }
-function readAsText(file){ return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsText(file); }); }
-
+function readAsBase64(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1]);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
+function readAsText(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(r.error);
+    r.readAsText(file);
+  });
+}
+// Thu nho anh (toi da 1280px) de gui nhanh va nhe
 function loadImage(file){
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
@@ -778,60 +982,131 @@ function loadImage(file){
 }
 
 function renderAttachments(){
-  attachBar.textContent = ''; attachBar.classList.toggle('has', attachments.length > 0);
+  attachBar.textContent = '';
+  attachBar.classList.toggle('has', attachments.length > 0);
   attachments.forEach((a, i) => {
-    const chip = document.createElement('div'); chip.className = 'chip';
-    if (a.thumb) { const im = document.createElement('img'); im.src = a.thumb; chip.appendChild(im); }
-    else { const ic = document.createElement('div'); ic.textContent = a.kind === 'pdf' ? '📕' : '📄'; chip.appendChild(ic); }
-    const nm = document.createElement('span'); nm.textContent = a.name; chip.appendChild(nm);
-    const x = document.createElement('button'); x.textContent = '✕'; x.onclick = () => { attachments.splice(i, 1); renderAttachments(); };
-    chip.appendChild(x); attachBar.appendChild(chip);
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    if (a.thumb){
+      const im = document.createElement('img');
+      im.src = a.thumb;
+      chip.appendChild(im);
+    } else {
+      const ic = document.createElement('div');
+      ic.textContent = a.kind === 'pdf' ? '📕' : '📄';
+      chip.appendChild(ic);
+    }
+    const nm = document.createElement('span');
+    nm.textContent = a.name;
+    chip.appendChild(nm);
+    const x = document.createElement('button');
+    x.textContent = '✕';
+    x.onclick = () => { attachments.splice(i, 1); renderAttachments(); };
+    chip.appendChild(x);
+    attachBar.appendChild(chip);
   });
 }
 
 async function addFiles(fileList){
   for (const file of Array.from(fileList)){
-    if (attachments.length >= MAX_ATTACH){ addBubble(`Mỗi lần mình chỉ nhận tối đa ${MAX_ATTACH} tệp thôi nhé.`, "miu", false); break; }
-    const name = file.name || 'tep'; const ext = (name.split('.').pop() || '').toLowerCase();
+    if (attachments.length >= MAX_ATTACH){
+      addBubble(`Mỗi lần mình chỉ nhận tối đa ${MAX_ATTACH} tệp thôi nhé.`, "miu", false);
+      break;
+    }
+    const name = file.name || 'tep';
+    const ext = (name.split('.').pop() || '').toLowerCase();
     try {
       if (file.type.startsWith('image/')){
-        const img = await loadImage(file); attachments.push({ name, kind:'image', mime:img.mime, data:img.data, thumb:img.thumb });
+        const img = await loadImage(file);
+        attachments.push({ name, kind:'image', mime:img.mime, data:img.data, thumb:img.thumb });
       } else if (file.type === 'application/pdf' || ext === 'pdf'){
-        if (file.size > 10 * 1024 * 1024){ addBubble(`Tệp PDF "${name}" lớn quá (trên 10MB).`, "miu", false); continue; }
+        if (file.size > 10 * 1024 * 1024){
+          addBubble(`Tệp PDF "${name}" lớn quá (trên 10MB), bạn chọn tệp nhỏ hơn nhé.`, "miu", false);
+          continue;
+        }
         attachments.push({ name, kind:'pdf', mime:'application/pdf', data: await readAsBase64(file) });
       } else if (file.type.startsWith('text/') || TEXT_EXTS.includes(ext)){
-        let t = await readAsText(file); if (t.length > 60000) t = t.slice(0, 60000) + '\n...(đã cắt bớt)';
+        let t = await readAsText(file);
+        if (t.length > 60000) t = t.slice(0, 60000) + '\n...(đã cắt bớt vì quá dài)';
         attachments.push({ name, kind:'text', text:t });
       } else {
-        addBubble(`Mình chưa đọc được loại tệp "${name}".`, "miu", false);
+        addBubble(`Mình chưa đọc được loại tệp "${name}". Hiện đọc được ảnh, PDF và tệp văn bản (txt, md, csv, json, code...).`, "miu", false);
       }
-    } catch (e){ addBubble(`Không đọc được tệp "${name}".`, "miu", false); }
+    } catch (e){
+      addBubble(`Không đọc được tệp "${name}", bạn thử lại nhé.`, "miu", false);
+    }
   }
   renderAttachments();
 }
-attachBtn.onclick = () => fileInput.click(); camBtn.onclick = () => camInput.click();
+
+attachBtn.onclick = () => fileInput.click();
+camBtn.onclick = () => camInput.click();
 fileInput.onchange = async (e) => { await addFiles(e.target.files); e.target.value = ''; };
 camInput.onchange = async (e) => { await addFiles(e.target.files); e.target.value = ''; };
 
-// ============================================================================
-// 7. GỌI API (GEMINI & DEEPSEEK)
-// ============================================================================
+deepBtn.onclick = () => {
+  deepMode = !deepMode;
+  Store.set('deep', deepMode ? '1' : '0');
+  deepBtn.classList.toggle('active', deepMode);
+  addBubble(deepMode
+    ? "Đã bật suy nghĩ sâu 🧠: mình sẽ trả lời lâu hơn nhưng kỹ hơn (Gemini còn tìm thêm nguồn trên mạng)."
+    : "Đã tắt suy nghĩ sâu.", "miu", false);
+};
+
+// ---------------- Goi AI cho cac cau hoi tu do ----------------
+// Lich su gui cho AI: bo tin nhan nguoi dung vua gui (se them rieng kem tep dinh kem)
 function historyForModel(){
   const h = history.filter(m => m.who === 'user' || m.who === 'miu').slice(-13);
   if (h.length && h[h.length - 1].who === 'user') h.pop();
   return h.slice(-12);
 }
-function attachedTextBlock(atts){ return atts.filter(a => a.kind === 'text').map(a => `\n\n[Tệp ${a.name}]\n${a.text}`).join(''); }
-const thinkingText = () => deepMode ? "Miu đang suy nghĩ sâu..." : "Miu đang gõ...";
-class ProviderError extends Error { constructor(m){ super(m); this.userMessage = m; } }
-const safeHttpUrl = (u) => typeof u === 'string' && /^https?:\/\//i.test(u);
+function attachedTextBlock(atts){
+  return atts.filter(a => a.kind === 'text')
+    .map(a => `\n\n[Nội dung tệp ${a.name}]\n${a.text}`).join('');
+}
+function thinkingText(){
+  return deepMode ? "Miu đang suy nghĩ sâu... (có thể mất khá lâu)" : "Miu đang gõ...";
+}
 
+class ProviderError extends Error {
+  constructor(userMessage){ super(userMessage); this.userMessage = userMessage; }
+}
+
+// Chi cho phep lien ket http(s), chan kieu "javascript:" tu du lieu ben ngoai
+function safeHttpUrl(u){ return typeof u === 'string' && /^https?:\/\//i.test(u); }
+
+function appendSources(bubble, sources){
+  const links = sources.filter(w => w && safeHttpUrl(w.uri));
+  if (!links.length) return;
+  const box = document.createElement('div');
+  box.className = 'sources';
+  box.appendChild(document.createTextNode('Nguồn: '));
+  links.forEach((w, i) => {
+    if (i) box.appendChild(document.createTextNode(' · '));
+    const a = document.createElement('a');
+    a.href = w.uri; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    a.textContent = w.title || w.uri;
+    box.appendChild(a);
+  });
+  bubble.appendChild(box);
+}
+
+// Goi Gemini: khoa gui qua header (khong nam tren dia chi URL); tu thu lai neu qua tai (503) hoac bi gioi han tam thoi (429)
 async function geminiFetch(body){
   const base = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+  const post = (url, extra) => fetch(url, {
+    method: 'POST',
+    headers: Object.assign({ 'Content-Type': 'application/json' }, extra),
+    body: JSON.stringify(body),
+  });
   let res, data;
   for (let attempt = 0; attempt < 3; attempt++){
-    try { res = await fetch(base + '?key=' + encodeURIComponent(apiKey), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); }
-    catch(e) { throw new ProviderError("Lỗi mạng không thể gọi Gemini."); }
+    try {
+      res = await post(base, { 'x-goog-api-key': apiKey });
+    } catch (e) {
+      // Du phong: neu trinh duyet chan header tuy chinh thi dung cach cu (khoa tren URL)
+      res = await post(base + '?key=' + encodeURIComponent(apiKey), {});
+    }
     data = await res.json().catch(() => ({}));
     if (res.status !== 503 && res.status !== 429) break;
     await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
@@ -839,16 +1114,30 @@ async function geminiFetch(body){
   return { res, data };
 }
 
+// ----- Strategy: moi nha cung cap AI la 1 doi tuong cung giao dien ask(userText, atts) -> {text, sources} -----
 const GeminiProvider = {
+  networkMsg: "Không kết nối được tới Gemini. Kiểm tra lại mạng hoặc API key nhé.",
   async ask(userText, atts){
-    if (!apiKey) throw new ProviderError("Bạn chưa lưu Gemini API key (bấm ⚙ góc trên để thêm).");
+    if (!apiKey){
+      throw new ProviderError("Bạn chưa lưu Gemini API key (bấm ⚙ góc trên để thêm) nên mình chỉ làm được các lệnh offline thôi. Gõ \"help\" xem danh sách nhé.");
+    }
     const parts = [{ text: userText + attachedTextBlock(atts) }];
-    atts.forEach(a => { if (a.kind === 'image' || a.kind === 'pdf') parts.push({ inlineData: { mimeType: a.mime, data: a.data } }); });
+    atts.forEach(a => {
+      if (a.kind === 'image' || a.kind === 'pdf') parts.push({ inlineData: { mimeType: a.mime, data: a.data } });
+    });
     const contents = historyForModel().map(m => ({ role: m.who === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
     contents.push({ role: 'user', parts });
-    const baseBody = { contents, systemInstruction: { parts: [{ text: SYSTEM_PERSONA + (deepMode ? DEEP_HINT : '') }] } };
-    
-    const variants = deepMode ? [{ search: true, think: { thinkingLevel: 'high' } }, { search: true, think: null }, { search: false, think: null }] : [{ search: false, think: null }];
+    const baseBody = {
+      contents,
+      systemInstruction: { parts: [{ text: SYSTEM_PERSONA + (deepMode ? DEEP_HINT : '') }] },
+    };
+    // Che do suy nghi sau: thu bat suy nghi + tim kiem; neu model khong ho tro thi ha dan
+    const variants = deepMode ? [
+      { search: true,  think: { thinkingLevel: 'high' } },
+      { search: true,  think: { thinkingBudget: 8192 } },
+      { search: true,  think: null },
+      { search: false, think: null },
+    ] : [{ search: false, think: null }];
     let result = null;
     for (const v of variants){
       const body = Object.assign({}, baseBody);
@@ -858,120 +1147,173 @@ const GeminiProvider = {
       if (result.res.status !== 400) break;
     }
     const { res, data } = result;
-    if (!res.ok) throw new ProviderError(`Lỗi Gemini (${res.status}): ${data?.error?.message || 'Không rõ nguyên nhân'}`);
+    if (!res.ok){
+      throw new ProviderError(`Lỗi gọi Gemini (${res.status}): ${data?.error?.message || 'không rõ nguyên nhân'}`);
+    }
     const cand = data?.candidates?.[0];
-    const text = (cand?.content?.parts || []).filter(p => !p.thought).map(p => p.text || '').join('') || "Mình chưa nghĩ ra câu trả lời.";
+    const text = (cand?.content?.parts || []).filter(p => !p.thought).map(p => p.text || '').join('')
+      || "Mình chưa nghĩ ra câu trả lời, bạn hỏi lại giúp mình nhé.";
     const seen = new Set();
-    const sources = (cand?.groundingMetadata?.groundingChunks || []).map(c => c.web).filter(w => w && safeHttpUrl(w.uri) && !seen.has(w.uri) && seen.add(w.uri)).slice(0, 5);
+    const sources = (cand?.groundingMetadata?.groundingChunks || [])
+      .map(c => c.web).filter(w => w && w.uri && !seen.has(w.uri) && seen.add(w.uri)).slice(0, 5);
     return { text, sources };
-  }
+  },
 };
 
 const DeepseekProvider = {
+  networkMsg: "Không kết nối được tới DeepSeek. Kiểm tra lại mạng hoặc API key nhé (hoặc trình duyệt đang chặn kết nối tới DeepSeek).",
   async ask(userText, atts){
-    if (!deepseekKey) throw new ProviderError("Bạn chưa lưu DeepSeek API key.");
-    if (atts.some(a => a.kind !== 'text')) throw new ProviderError("DeepSeek chưa đọc được ảnh hoặc PDF. Bạn chọn Gemini nhé.");
+    if (!deepseekKey){
+      throw new ProviderError("Bạn chưa lưu DeepSeek API key (bấm ⚙ góc trên để thêm) nên mình chỉ làm được các lệnh offline thôi. Gõ \"help\" xem danh sách nhé.");
+    }
+    if (atts.some(a => a.kind !== 'text')){
+      throw new ProviderError("DeepSeek chưa đọc được ảnh hoặc PDF. Bạn bấm ⚙ chọn Gemini để mình xem ảnh/PDF nhé.");
+    }
     const sys = SYSTEM_PERSONA + (deepMode ? DEEP_HINT : '');
     const messages = [{ role: 'system', content: sys }]
       .concat(historyForModel().map(m => ({ role: m.who === 'user' ? 'user' : 'assistant', content: m.text })))
       .concat([{ role: 'user', content: userText + attachedTextBlock(atts) }]);
     const res = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + deepseekKey },
-      body: JSON.stringify({ model: DEEPSEEK_MODEL, messages, thinking: { type: deepMode ? 'enabled' : 'disabled' }, stream: false })
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + deepseekKey,
+      },
+      body: JSON.stringify({
+        model: DEEPSEEK_MODEL,
+        messages,
+        thinking: { type: deepMode ? 'enabled' : 'disabled' },
+        stream: false,
+      }),
     });
     const data = await res.json();
-    if (!res.ok) throw new ProviderError(`Lỗi DeepSeek (${res.status}): ${data?.error?.message || 'Lỗi không xác định'}`);
-    return { text: data?.choices?.[0]?.message?.content || "Không có phản hồi.", sources: [] };
-  }
+    if (!res.ok){
+      throw new ProviderError(`Lỗi gọi DeepSeek (${res.status}): ${data?.error?.message || 'không rõ nguyên nhân'}`);
+    }
+    const text = data?.choices?.[0]?.message?.content || "Mình chưa nghĩ ra câu trả lời, bạn hỏi lại giúp mình nhé.";
+    return { text, sources: [] };
+  },
 };
+
 const Providers = { gemini: GeminiProvider, deepseek: DeepseekProvider };
 
 async function askMiu(userText, atts = []){
-  busy = true; busySince = Date.now();
+  busy = true;
+  busySince = Date.now();
   const prov = Providers[provider] || GeminiProvider;
   const thinking = addBubble(thinkingText(), "miu typing", false);
   try {
     const out = await prov.ask(userText, atts);
     thinking.remove();
     const bubble = addBubble(out.text, "miu");
-    if (out.sources && out.sources.length){
-      const box = document.createElement('div'); box.className = 'sources'; box.appendChild(document.createTextNode('Nguồn: '));
-      out.sources.forEach((w, i) => {
-        if (i) box.appendChild(document.createTextNode(' · '));
-        const a = document.createElement('a'); a.href = w.uri; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = w.title || w.uri;
-        box.appendChild(a);
-      });
-      bubble.appendChild(box);
-    }
-  } catch (err) {
-    thinking.remove(); addBubble(err instanceof ProviderError ? err.userMessage : "Lỗi kết nối mạng hoặc máy chủ.", "miu");
-  } finally { busy = false; }
+    if (out.sources && out.sources.length) appendSources(bubble, out.sources);
+  } catch (err){
+    thinking.remove();
+    addBubble(err instanceof ProviderError ? err.userMessage : prov.networkMsg, "miu");
+  } finally {
+    busy = false;
+  }
 }
 
-// ============================================================================
-// 8. ÂM THANH (MIC & TTS)
-// ============================================================================
 const RecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (RecognitionCtor){
   recognition = new RecognitionCtor();
-  recognition.lang = 'vi-VN'; recognition.continuous = false; recognition.interimResults = false;
+  recognition.lang = 'vi-VN';
+  recognition.continuous = false;
+  recognition.interimResults = false;
   recognition.onresult = (e) => {
     const transcript = e.results[0][0].transcript.trim();
-    if (transcript){ waitingForReply = true; inputEl.value = transcript; send(); }
+    if (transcript){
+      waitingForReply = true;
+      inputEl.value = transcript;
+      send();
+    }
   };
-  recognition.onend = () => { if (liveActive && !waitingForReply && !speechSynthesis.speaking) startListening(); };
+  recognition.onend = () => {
+    if (liveActive && !waitingForReply && !speechSynthesis.speaking) startListening();
+  };
   recognition.onerror = (e) => {
     if (e.error === 'not-allowed'){
-      liveActive = false; liveBtn.classList.remove('active');
-      addBubble("Mình chưa được cấp quyền dùng micro, bạn cho phép rồi bật lại Live nhé.", "miu", false); return;
+      liveActive = false;
+      liveBtn.classList.remove('active');
+      addBubble("Mình chưa được cấp quyền dùng micro, bạn cho phép rồi bật lại Live nhé.", "miu", false);
+      return;
     }
     if (liveActive && !waitingForReply) setTimeout(() => startListening(), 500);
   };
 }
-function startListening(){ if (!recognition || !liveActive || waitingForReply) return; try { recognition.start(); } catch (e) {} }
+
+function startListening(){
+  if (!recognition || !liveActive || waitingForReply) return;
+  try { recognition.start(); } catch (e) { /* da dang chay, bo qua */ }
+}
 
 function speakText(text){
   if (!window.speechSynthesis) return;
   speechSynthesis.cancel();
-  const cleanText = text.replace(/[*#_`~]/g, '').replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
-  const utter = new SpeechSynthesisUtterance(cleanText);
+  const utter = new SpeechSynthesisUtterance(text);
   utter.lang = 'vi-VN';
   utter.onend = () => { if (liveActive) startListening(); };
   speechSynthesis.speak(utter);
 }
 
 liveBtn.onclick = () => {
-  if (!recognition){ addBubble("Trình duyệt này chưa hỗ trợ live voice.", "miu", false); return; }
-  liveActive = !liveActive; liveBtn.classList.toggle('active', liveActive);
-  if (liveActive){ addBubble("Đã bật chế độ live, bạn nói chuyện thoải mái nhé! 🎙️", "miu", false); startListening(); }
-  else { speechSynthesis.cancel(); if (recognition) { try { recognition.stop(); } catch(e){} } addBubble("Đã tắt chế độ live.", "miu", false); }
+  if (!recognition){
+    addBubble("Trình duyệt này chưa hỗ trợ live voice, bạn thử trên Chrome hoặc Edge nhé.", "miu", false);
+    return;
+  }
+  liveActive = !liveActive;
+  liveBtn.classList.toggle('active', liveActive);
+  if (liveActive){
+    addBubble("Đã bật chế độ live, bạn nói chuyện thoải mái nhé! 🎙️", "miu", false);
+    startListening();
+  } else {
+    speechSynthesis.cancel();
+    if (recognition) { try { recognition.stop(); } catch(e){} }
+    addBubble("Đã tắt chế độ live.", "miu", false);
+  }
 };
 
-// ============================================================================
-// 9. GỬI TIN NHẮN
-// ============================================================================
 function send(){
-  const text = inputEl.value.trim(); const atts = attachments.slice();
+  const text = inputEl.value.trim();
+  const atts = attachments.slice();
   if (!text && !atts.length) return;
 
   if (atts.length){
+    // Co tep dinh kem: gui thang cho AI (bo qua lenh offline)
     const shown = (text ? text + '\n' : '') + atts.map(a => '📎 ' + a.name).join('\n');
-    const bubbleWrap = addBubble(shown, "user");
-    atts.filter(a => a.thumb).forEach(a => { const im = document.createElement('img'); im.className = 'thumb'; im.src = a.thumb; bubbleWrap.querySelector('.bubble').appendChild(im); });
-    inputEl.value = ''; attachments = []; renderAttachments();
-    askMiu(text || 'Hãy xem tệp đính kèm này và cho mình biết nội dung chính nhé.', atts);
+    const bubble = addBubble(shown, "user");
+    atts.filter(a => a.thumb).forEach(a => {
+      const im = document.createElement('img');
+      im.className = 'thumb';
+      im.src = a.thumb;
+      bubble.appendChild(im);
+    });
+    inputEl.value = '';
+    attachments = [];
+    renderAttachments();
+    askMiu(text || 'Hãy xem tệp đính kèm này và cho mình biết nội dung chính, giải thích giúp mình nhé.', atts);
     return;
   }
 
-  addBubble(text, "user"); inputEl.value = '';
+  addBubble(text, "user");
+  inputEl.value = '';
+
   if (handleLocalCommand(text)) return;
+
   askMiu(text);
 }
+
 
 sendBtn.onclick = send;
 inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
 
-if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+// Dang ky service worker de co the "Cai dat" thanh app va dung offline duoc 1 phan
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
 </script>
 </body>
 </html>

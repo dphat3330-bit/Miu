@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://generativelanguage.googleapis.com https://api.deepseek.com; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'; worker-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.pollinations.ai; connect-src 'self' https://generativelanguage.googleapis.com https://api.deepseek.com; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'; worker-src 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Miu — Trợ lý AI</title>
@@ -160,6 +160,10 @@
   .bubble img.thumb{display:block; max-width:100%; max-height:180px; border-radius:10px; margin-top:6px;}
   .bubble .sources{margin-top:8px; font-size:12px; color:var(--text-dim); line-height:1.7;}
   .bubble .sources a{color:var(--accent);}
+  .bubble a{color:var(--accent);}
+  .bubble img.gen{display:block; width:100%; max-width:320px; min-height:120px; border-radius:12px; margin-top:8px; background:var(--bg-soft);}
+  .bubble .imgnote{font-size:12px; color:var(--text-dim); margin-top:6px;}
+  .bubble .imgbtn{margin-top:8px; padding:8px 12px; border-radius:10px; border:none; background:var(--accent); color:#1b1625; font-weight:600; cursor:pointer; font-size:13px;}
   .bar-btn{
     background:none; border:none; color:var(--text-dim); cursor:pointer;
     font-size:20px; width:38px; height:44px; border-radius:50%; flex-shrink:0; padding:0;
@@ -544,14 +548,57 @@ function updateTitleUI(){
   chatTitleEl.textContent = (chats[currentId] && chats[currentId].title) || 'Chat mới';
 }
 
-function addBubble(text, who, store = true){
+// Gan anh vao bong chat. lazy = true: chi hien nut, bam moi tai (tranh tai hang loat khi mo lai chat cu)
+function attachImage(div, url, alt, lazy){
+  const holder = document.createElement('div');
+  div.appendChild(holder);
+  const show = () => {
+    holder.textContent = '';
+    const note = document.createElement('div');
+    note.className = 'imgnote';
+    note.textContent = 'Đang tải ảnh...';
+    holder.appendChild(note);
+    const im = document.createElement('img');
+    im.className = 'gen';
+    im.alt = alt;
+    im.referrerPolicy = 'no-referrer';
+    im.onload = () => { note.remove(); };
+    im.onerror = () => {
+      holder.textContent = '';
+      const e = document.createElement('div');
+      e.className = 'imgnote';
+      e.textContent = 'Không tải được ảnh (dịch vụ ảnh miễn phí có thể đang bận hoặc giới hạn tốc độ). Bạn thử lại sau ít phút nhé.';
+      holder.appendChild(e);
+    };
+    im.src = url;
+    holder.appendChild(im);
+    const link = document.createElement('a');
+    link.href = url; link.target = '_blank'; link.rel = 'noopener noreferrer';
+    link.textContent = 'Mở ảnh lớn / lưu ảnh';
+    holder.appendChild(link);
+  };
+  if (lazy){
+    const b = document.createElement('button');
+    b.className = 'imgbtn';
+    b.textContent = '🖼️ Bấm để xem lại ảnh';
+    b.onclick = show;
+    holder.appendChild(b);
+  } else {
+    show();
+  }
+}
+
+function addBubble(text, who, store = true, img = null, lazy = false){
   const div = document.createElement('div');
   div.className = 'bubble ' + who;
   div.textContent = text;
+  if (img && safeHttpUrl(img)) attachImage(div, img, text, lazy);
   chatEl.appendChild(div);
   chatEl.scrollTop = chatEl.scrollHeight;
   if (store){
-    history.push({who, text});
+    const entry = { who, text };
+    if (img) entry.img = img;
+    history.push(entry);
     const cur = chats[currentId];
     if (who === 'user' && cur && !cur.title){
       cur.title = makeTitle(text);
@@ -570,7 +617,7 @@ function renderChat(){
   const was = liveActive;
   liveActive = false; // khong doc to lai tin nhan cu
   chatEl.textContent = '';
-  history.forEach(m => addBubble(m.text, m.who, false));
+  history.forEach(m => addBubble(m.text, m.who, false, m.img || null, true));
   liveActive = was;
   chatEl.scrollTop = chatEl.scrollHeight;
   updateTitleUI();
@@ -769,6 +816,7 @@ function startCountdown(seconds){
 
 const HELP_TEXT =
 `Mình làm được (offline, không cần API key):
+- "tao anh <mo ta>" — tạo ảnh bằng AI miễn phí, ví dụ: tao anh con meo phi hanh gia (mô tả sẽ được gửi tới dịch vụ vẽ ảnh Pollinations)
 - "tao mat khau [so ky tu]" — tạo mật khẩu ngẫu nhiên
 - "dem nguoc [so giay]" — đếm ngược
 - "game 4" (hoặc "doan con vat") — chơi đoán con vật qua gợi ý
@@ -917,11 +965,82 @@ function stopWaterReminder(){
   addBubble("Đã tắt nhắc uống nước.", "miu");
 }
 
+// ---------------- Tao anh (dich vu mien phi Pollinations, khong can khoa) ----------------
+// Luu y: noi dung mo ta duoc gui toi dich vu nay de ve anh. Ban mien phi gioi han toc do (~1 anh moi 15 giay).
+const IMAGE_COOLDOWN_MS = 15000;
+let lastImageAt = 0;
+const IMG_CMD = /^(?:(?:hay|vui long|lam on|giup minh|nho)\s+)*(?:tao|ve|sinh|gen)\s+(?:cho\s+minh\s+|giup\s+minh\s+)?(?:mot\s+|1\s+)?(?:hinh anh|buc tranh|buc anh|anh|hinh|tranh)\b[\s:,.-]*/;
+
+// Tra ve phan mo ta (giu nguyen dau) neu cau la lenh tao anh, nguoc lai null
+function parseImageCommand(raw){
+  const chars = Array.from(String(raw).trim());
+  const norm = chars.map(c => stripDiacritics(c).toLowerCase()).join('');
+  const m = IMG_CMD.exec(norm);
+  return m ? chars.slice(m[0].length).join('').trim() : null;
+}
+function imageUrl(promptEn, seed){
+  return 'https://image.pollinations.ai/prompt/' + encodeURIComponent(String(promptEn).slice(0, 400))
+    + '?width=1024&height=1024&model=flux&nologo=true&seed=' + seed;
+}
+// Dich/viet lai mo ta sang tieng Anh bang AI dang chon (ve anh bang tieng Anh thuong dep hon); loi thi dung nguyen van
+async function translateForImage(text){
+  const sys = 'Rewrite the user request as ONE concise, vivid English prompt for an AI image generator. Output ONLY the prompt, no quotes, no explanation.';
+  const clean = s => String(s || '').replace(/["\n\r]+/g, ' ').trim().slice(0, 400);
+  try {
+    if (provider === 'gemini' && apiKey){
+      const { res, data } = await geminiFetch({
+        systemInstruction: { parts: [{ text: sys }] },
+        contents: [{ role: 'user', parts: [{ text }] }],
+      });
+      if (res.ok) return clean((data?.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('')) || null;
+    } else if (provider === 'deepseek' && deepseekKey){
+      const res = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + deepseekKey },
+        body: JSON.stringify({
+          model: DEEPSEEK_MODEL,
+          messages: [{ role: 'system', content: sys }, { role: 'user', content: text }],
+          thinking: { type: 'disabled' }, max_tokens: 150, stream: false,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) return clean(data?.choices?.[0]?.message?.content) || null;
+    }
+  } catch (e) { /* bo qua, dung mo ta goc */ }
+  return null;
+}
+async function startImage(prompt){
+  if (!prompt){
+    addBubble("Bạn muốn mình vẽ gì nè? Ví dụ: tạo ảnh con mèo đội mũ phi hành gia", "miu");
+    return;
+  }
+  const wait = IMAGE_COOLDOWN_MS - (Date.now() - lastImageAt);
+  if (wait > 0){
+    addBubble(`Đợi khoảng ${Math.ceil(wait / 1000)} giây nữa rồi tạo ảnh tiếp nhé (dịch vụ ảnh miễn phí giới hạn tốc độ).`, "miu");
+    return;
+  }
+  lastImageAt = Date.now();
+  busy = true;
+  busySince = Date.now();
+  const thinking = addBubble("Miu đang vẽ... 🎨", "miu typing", false);
+  let en = prompt;
+  try {
+    const t = await translateForImage(prompt);
+    if (t) en = t;
+  } finally {
+    busy = false;
+  }
+  thinking.remove();
+  const seed = Math.floor(Math.random() * 1e9);
+  addBubble('🖼️ Ảnh: ' + prompt, "miu", true, imageUrl(en, seed));
+}
+
 // ---------------- Lenh offline: moi lenh la {match, run}, xet theo thu tu ----------------
 const has = (t, ...keys) => keys.some(k => t.includes(k));
 const firstNumber = (t, fallback) => { const m = t.match(/\d+/); return m ? parseInt(m[0], 10) : fallback; };
 const COMMANDS = [
   { match: t => t === 'help' || t === 'tro giup', run: () => addBubble(HELP_TEXT, "miu") },
+  { match: t => IMG_CMD.test(t), run: (t, raw) => startImage(parseImageCommand(raw)) },
   { match: t => has(t, 'tao mat khau', 'sinh mat khau'),
     run: t => { const len = firstNumber(t, 12); addBubble(`Mật khẩu ${len} ký tự của bạn:\n${generatePassword(len)}`, "miu"); } },
   { match: t => has(t, 'dem nguoc'), run: t => startCountdown(firstNumber(t, 10)) },
@@ -937,7 +1056,7 @@ function handleLocalCommand(raw){
   const text = stripDiacritics(raw.toLowerCase()).trim();
   const cmd = COMMANDS.find(c => c.match(text));
   if (!cmd) return false;
-  cmd.run(text);
+  cmd.run(text, raw);
   return true;
 }
 

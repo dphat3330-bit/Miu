@@ -978,6 +978,21 @@ function parseImageCommand(raw){
   const m = IMG_CMD.exec(norm);
   return m ? chars.slice(m[0].length).join('').trim() : null;
 }
+// Neu cau tra loi cua AI co chua link anh tu dich vu ve anh (dang 
+
+![...](link)
+
+ hoac link tran),
+// tach link ra khoi chu va tra ve de hien thanh anh luon. Chi nhan link https cua pollinations.ai.
+const AI_IMG_RE = /!\[[^\]]*\]\((https:\/\/(?:[a-z0-9-]+\.)*pollinations\.ai\/[^\s)]+)\)|(https:\/\/(?:[a-z0-9-]+\.)*pollinations\.ai\/[^\s)\]>"']+)/i;
+function pullImage(text){
+  const m = AI_IMG_RE.exec(String(text));
+  if (!m) return { text: String(text), img: null };
+  const url = m[1] || m[2];
+  let rest = String(text).replace(m[0], '').replace(/\n{3,}/g, '\n\n').trim();
+  if (!rest) rest = '🖼️ Ảnh đây nè!';
+  return { text: rest, img: safeHttpUrl(url) ? url : null };
+}
 function imageUrl(promptEn, seed){
   return 'https://image.pollinations.ai/prompt/' + encodeURIComponent(String(promptEn).slice(0, 400))
     + '?width=1024&height=1024&model=flux&nologo=true&seed=' + seed;
@@ -1324,7 +1339,8 @@ async function askMiu(userText, atts = []){
   try {
     const out = await prov.ask(userText, atts);
     thinking.remove();
-    const bubble = addBubble(out.text, "miu");
+    const shown = pullImage(out.text);
+    const bubble = addBubble(shown.text, "miu", true, shown.img);
     if (out.sources && out.sources.length) appendSources(bubble, out.sources);
   } catch (err){
     thinking.remove();

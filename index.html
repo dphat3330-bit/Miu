@@ -139,6 +139,13 @@
   #authSubmit:disabled{opacity:.6;}
   .auth-note{margin:12px 0 0; font-size:11px; color:var(--text-dim); line-height:1.5; text-align:center;}
 
+  #errBar{
+    position:fixed; left:8px; right:8px; bottom:calc(env(safe-area-inset-bottom, 0px) + 80px); z-index:200;
+    background:#7a1f33; color:#fff; border-radius:12px; padding:10px 12px; font-size:12px; line-height:1.45;
+    box-shadow:0 6px 24px rgba(0,0,0,.4); display:none; word-break:break-word;
+  }
+  #errBar.show{display:block;}
+  #errBar button{float:right; margin-left:8px; background:none; border:none; color:#fff; font-size:16px; cursor:pointer;}
   .deep-btn{
     background:none; border:none; color:var(--text-dim); cursor:pointer;
     font-size:18px; padding:6px; border-radius:50%;
@@ -231,6 +238,8 @@
 </head>
 <body>
 
+<div id="errBar" role="alert"></div>
+
 <header>
   <button class="gear" id="menuBtn" title="Danh sách chat">☰</button>
   <div class="header-text">
@@ -309,6 +318,28 @@
 </aside>
 
 <script>
+// ---------------- Bao loi hien tren man hinh (de chup gui khi co su co) ----------------
+const errBar = document.getElementById('errBar');
+const errLog = [];
+function reportError(label, e){
+  const msg = (e && e.message) ? e.message : String(e || '');
+  errLog.push(label + ': ' + msg);
+  if (!errBar) return;
+  errBar.textContent = '';
+  const x = document.createElement('button');
+  x.textContent = '✕';
+  x.onclick = () => errBar.classList.remove('show');
+  errBar.appendChild(x);
+  errBar.appendChild(document.createTextNode('⚠ Miu gặp lỗi nhỏ (' + label + '): ' + msg + ' — bạn chụp màn hình gửi mình nhé.'));
+  errBar.classList.add('show');
+}
+// Chay mot buoc khoi dong; neu loi thi bao len man hinh va tiep tuc, de cac chuc nang khac van hoat dong
+function guard(label, fn){
+  try { return fn(); } catch (e) { reportError(label, e); }
+}
+window.addEventListener('error', ev => reportError('lỗi script', ev.error || ev.message));
+window.addEventListener('unhandledrejection', ev => reportError('lỗi bất đồng bộ', ev.reason));
+
 const chatEl = document.getElementById('chat');
 const inputEl = document.getElementById('input');
 const sendBtn = document.getElementById('send');
@@ -345,6 +376,10 @@ const authMsg = document.getElementById('authMsg');
 const authSubmit = document.getElementById('authSubmit');
 const tabLogin = document.getElementById('tabLogin');
 const tabRegister = document.getElementById('tabRegister');
+
+// Gan nut Gui / phim Enter ngay tu dau: du cac buoc khoi dong phia sau co loi thi van gui duoc
+sendBtn.onclick = () => send();
+inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
 
 const GEMINI_MODEL = "gemini-3.5-flash-lite";
 const DEEPSEEK_MODEL = "deepseek-v4-flash";
@@ -476,7 +511,8 @@ const Account = {
     location.reload();
   },
 };
-Account.init();
+guard('đọc tài khoản', () => Account.init());
+if (Account.user === null) Store.locked = true;
 
 const GREETING = "Chào bạn! Mình là Miu 🐾 Gõ \"help\" để xem mình làm được gì nhé.";
 const MAX_CHATS = 50;
@@ -505,6 +541,37 @@ function makeTitle(text){
   if (!t) t = 'Chat mới';
   return t.length > 30 ? t.slice(0, 30).trimEnd() + '…' : t;
 }
+// Loc du lieu doc tu bo nho: bo muc hong / sai kieu de khong lam sap ung dung
+function cleanHistory(arr){
+  if (!Array.isArray(arr)) return [];
+  const out = [];
+  arr.forEach(m => {
+    if (!m || typeof m !== 'object') return;
+    if (m.who !== 'user' && m.who !== 'miu') return;
+    if (typeof m.text !== 'string') return;
+    const e = { who: m.who, text: m.text };
+    if (typeof m.img === 'string' && safeHttpUrl(m.img)) e.img = m.img;
+    out.push(e);
+  });
+  return out;
+}
+function cleanChats(obj){
+  const out = {};
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return out;
+  Object.keys(obj).forEach(id => {
+    const c = obj[id];
+    if (!c || typeof c !== 'object') return;
+    let h = cleanHistory(c.history);
+    if (!h.length) h = [{ who: 'miu', text: GREETING }];
+    out[id] = {
+      id,
+      title: (typeof c.title === 'string' && c.title) ? c.title : null,
+      updated: Number.isFinite(c.updated) ? c.updated : 0,
+      history: h,
+    };
+  });
+  return out;
+}
 function newChatObj(){
   const id = 'c' + Date.now() + Math.floor(Math.random() * 1000);
   return { id, title: null, history: [{ who: 'miu', text: GREETING }], updated: Date.now() };
@@ -518,8 +585,8 @@ function persistChats(){
   Store.set('current', currentId);
 }
 function loadChats(){
-  const saved = Store.getJSON('chats', null);
-  if (saved && Object.keys(saved).length){
+  const saved = cleanChats(Store.getJSON('chats', null));
+  if (Object.keys(saved).length){
     chats = saved;
     currentId = Store.get('current');
     if (!chats[currentId]){
@@ -528,7 +595,7 @@ function loadChats(){
   } else {
     // Lan dau co tinh nang nhieu chat: chuyen lich su cu thanh chat dau tien
     const c = newChatObj();
-    const old = Store.getJSON('history', []);
+    const old = cleanHistory(Store.getJSON('history', []));
     if (old.length){
       c.history = old;
       const u = old.find(m => m.who === 'user');
@@ -592,7 +659,7 @@ function addBubble(text, who, store = true, img = null, lazy = false){
   const div = document.createElement('div');
   div.className = 'bubble ' + who;
   div.textContent = text;
-  if (img && safeHttpUrl(img)) attachImage(div, img, text, lazy);
+  if (img && safeHttpUrl(img)) guard('hiển thị ảnh', () => attachImage(div, img, text, lazy));
   chatEl.appendChild(div);
   chatEl.scrollTop = chatEl.scrollHeight;
   if (store){
@@ -608,7 +675,7 @@ function addBubble(text, who, store = true, img = null, lazy = false){
   }
   if (who === 'miu' && liveActive){
     waitingForReply = false;
-    speakText(text);
+    guard('đọc to', () => speakText(text));
   }
   return div;
 }
@@ -699,8 +766,17 @@ drawerMask.onclick = closeDrawer;
 newChatBtn.onclick = newChat;
 newBtn.onclick = newChat;
 
-loadChats();
-renderChat();
+try {
+  loadChats();
+} catch (e) {
+  reportError('tải chat', e);
+  chats = {};
+  const fresh = newChatObj();
+  chats[fresh.id] = fresh;
+  currentId = fresh.id;
+  history = fresh.history;
+}
+guard('hiển thị chat', () => renderChat());
 
 function renderAccount(){
   accountBox.textContent = '';
@@ -721,7 +797,7 @@ function renderAccount(){
   note.textContent = 'Chat và API key lưu riêng cho tài khoản này, ngay trên thiết bị này.';
   accountBox.appendChild(note);
 }
-renderAccount();
+guard('hiển thị tài khoản', () => renderAccount());
 
 // ----- Man hinh dang nhap / tao tai khoan -----
 let authMode = 'login';
@@ -750,7 +826,7 @@ authForm.addEventListener('submit', async (e) => {
   }
   authSubmit.disabled = false;
 });
-if (!Account.user) authScreen.classList.add('show');
+guard('màn hình đăng nhập', () => { if (!Account.user) authScreen.classList.add('show'); });
 
 clearDataBtn.onclick = () => {
   if (!confirm('Xoá toàn bộ chat và API key của tài khoản này trên thiết bị này?')) return;
@@ -1351,7 +1427,7 @@ async function askMiu(userText, atts = []){
 }
 
 const RecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (RecognitionCtor){
+if (RecognitionCtor) guard('giọng nói', () => {
   recognition = new RecognitionCtor();
   recognition.lang = 'vi-VN';
   recognition.continuous = false;
@@ -1376,7 +1452,7 @@ if (RecognitionCtor){
     }
     if (liveActive && !waitingForReply) setTimeout(() => startListening(), 500);
   };
-}
+});
 
 function startListening(){
   if (!recognition || !liveActive || waitingForReply) return;
@@ -1439,10 +1515,6 @@ function send(){
   askMiu(text);
 }
 
-
-sendBtn.onclick = send;
-inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
-
 // Dang ky service worker de co the "Cai dat" thanh app va dung offline duoc 1 phan
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -1451,4 +1523,4 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 </body>
-  </html>
+</html>
